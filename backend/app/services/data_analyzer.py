@@ -1,5 +1,6 @@
 import pandas as pd
 from app.services.chart_generator import generate_chart_recommendations
+from app.services.chart_generator import generate_chart_recommendations, generate_plotly_charts
 
 
 def analyze_dataframe(df: pd.DataFrame) -> dict:
@@ -35,6 +36,8 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
 
     chart_recommendations = generate_chart_recommendations(df)
 
+    charts = generate_plotly_charts(df)
+
     insights = generate_basic_insights(
         rows=rows,
         columns=columns,
@@ -62,6 +65,7 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "preview": df.head(5).fillna("").to_dict(orient="records"),
         "insights": insights,
         "chart_recommendations": chart_recommendations,
+        "charts": charts,
     }
 
 
