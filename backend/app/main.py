@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 import pandas as pd
 
 from app.services.data_analyzer import analyze_dataframe
+from app.services.data_cleaner import clean_dataframe
 
 app = FastAPI(
     title="PulseIQ API",
@@ -27,7 +28,9 @@ async def analyze_dataset(file: UploadFile = File(...)):
 
     try:
         df = pd.read_csv(file.file, skipinitialspace=True)
-        summary = analyze_dataframe(df)
+        cleaned_df, cleaning_report = clean_dataframe(df)
+        summary = analyze_dataframe(cleaned_df)
+        summary["cleaning_report"] = cleaning_report
 
         return {
             "filename": file.filename,
