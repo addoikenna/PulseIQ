@@ -3,6 +3,7 @@ import pandas as pd
 
 from app.services.data_analyzer import analyze_dataframe
 from app.services.data_cleaner import clean_dataframe
+from app.services.response_formatter import format_analysis_response
 
 app = FastAPI(
     title="PulseIQ API",
@@ -20,10 +21,89 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
+@app.get("/sample-analysis")
+def sample_analysis():
+    return {
+        "status": "success",
+        "message": "This is a sample PulseIQ analysis response.",
+        "filename": "sample_sales.csv",
+        "overview": {
+            "rows": 6,
+            "columns": 5,
+            "data_quality_score": 98,
+            "total_missing_values": 1,
+            "duplicate_rows": 0,
+        },
+        "columns": {
+            "names": ["date", "product", "category", "sales", "quantity"],
+            "data_types": {
+                "date": "object",
+                "product": "object",
+                "category": "object",
+                "sales": "int64",
+                "quantity": "float64",
+            },
+            "numeric_columns": ["sales", "quantity"],
+            "text_columns": ["date", "product", "category"],
+            "possible_date_columns": ["date"],
+        },
+        "data_quality": {
+            "missing_values": {
+                "date": 0,
+                "product": 0,
+                "category": 0,
+                "sales": 0,
+                "quantity": 1,
+            },
+            "cleaning_report": {
+                "columns_renamed": {},
+                "missing_markers_converted": 1,
+                "text_values_trimmed": 2,
+                "numeric_columns_converted": [],
+                "date_columns_detected": ["date"],
+                "duplicates_detected": 0,
+                "warnings": [
+                    "Column 'quantity' has 1 missing value(s) and may need review."
+                ],
+            },
+        },
+        "insights": [
+            "The dataset contains 6 rows and 5 columns.",
+            "The data quality score is 98/100, which suggests the dataset is in good condition for analysis.",
+            "There is 1 missing value in the dataset. This should be reviewed before analysis.",
+            "No duplicate rows were detected.",
+        ],
+        "chart_recommendations": [
+            {
+                "chart_type": "line",
+                "title": "Sales Trend Over Time",
+                "x_axis": "date",
+                "y_axis": "sales",
+                "description": "Shows how sales changes over time.",
+            },
+            {
+                "chart_type": "bar",
+                "title": "Count by category",
+                "x_axis": "category",
+                "y_axis": "count",
+                "description": "Compares the number of records across category.",
+            },
+        ],
+        "charts": [],
+        "preview": [
+            {
+                "date": "2024-01-01",
+                "product": "Laptop",
+                "category": "Electronics",
+                "sales": 500000,
+                "quantity": 2,
+            }
+        ],
+    }
 
 @app.post("/analyze")
 async def analyze_dataset(file: UploadFile = File(...)):
-    if not file.filename.endswith(".csv"):
+    if not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are supported for now.")
 
     try:
@@ -32,10 +112,7 @@ async def analyze_dataset(file: UploadFile = File(...)):
         summary = analyze_dataframe(cleaned_df)
         summary["cleaning_report"] = cleaning_report
 
-        return {
-            "filename": file.filename,
-            "summary": summary,
-        }
+        return format_analysis_response(file.filename, summary)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing dataset: {str(e)}")
