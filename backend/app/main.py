@@ -1,14 +1,24 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 
 from app.services.data_analyzer import analyze_dataframe
 from app.services.data_cleaner import clean_dataframe
 from app.services.response_formatter import format_analysis_response
 
+
 app = FastAPI(
     title="PulseIQ API",
     description="Backend API for AI-powered dataset analysis and dashboard generation.",
     version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
