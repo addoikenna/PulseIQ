@@ -3,6 +3,7 @@ import pandas as pd
 from app.services.chart_generator import generate_chart_recommendations
 from app.services.chart_generator import generate_chart_recommendations, generate_plotly_charts
 from app.services.kpi_generator import generate_kpis
+from app.services.filter_generator import generate_filters
 
 
 def analyze_dataframe(df: pd.DataFrame) -> dict:
@@ -53,6 +54,8 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
 
     kpis = generate_kpis(df)
 
+    filters = generate_filters(df)
+
     return {
         "rows": rows,
         "columns": columns,
@@ -71,6 +74,7 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "insights": insights,
         "chart_recommendations": chart_recommendations,
         "charts": charts,
+        "filters": filters,
     }
 
 
