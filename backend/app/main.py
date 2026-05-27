@@ -123,7 +123,7 @@ async def analyze_dataset(file: UploadFile = File(...)):
         summary = analyze_dataframe(cleaned_df)
         summary["cleaning_report"] = cleaning_report
 
-        return format_analysis_response(file.filename, summary)
+        return format_analysis_response(summary, file.filename)
 
     except EmptyDataError:
         raise HTTPException(status_code=400, detail="The uploaded CSV file is empty.")
