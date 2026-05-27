@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
+from pandas.errors import EmptyDataError, ParserError
 
 from app.services.data_analyzer import analyze_dataframe
 from app.services.data_cleaner import clean_dataframe
@@ -124,5 +125,11 @@ async def analyze_dataset(file: UploadFile = File(...)):
 
         return format_analysis_response(file.filename, summary)
 
+    except EmptyDataError:
+        raise HTTPException(status_code=400, detail="The uploaded CSV file is empty.")
+
+    except ParserError:
+        raise HTTPException(status_code=400, detail="The uploaded CSV file could not be parsed. Please check the file format.")
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error analyzing dataset: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error while analyzing dataset: {str(e)}")
