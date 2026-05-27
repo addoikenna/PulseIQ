@@ -10,6 +10,7 @@ def format_analysis_response(filename: str, summary: dict) -> dict:
             "total_missing_values": summary.get("total_missing_values"),
             "duplicate_rows": summary.get("duplicate_rows"),
         },
+        "kpis": summary.get("kpis"),
         "columns": {
             "names": summary.get("column_names"),
             "data_types": summary.get("data_types"),

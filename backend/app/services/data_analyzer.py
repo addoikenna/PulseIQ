@@ -1,6 +1,8 @@
 import pandas as pd
+
 from app.services.chart_generator import generate_chart_recommendations
 from app.services.chart_generator import generate_chart_recommendations, generate_plotly_charts
+from app.services.kpi_generator import generate_kpis
 
 
 def analyze_dataframe(df: pd.DataFrame) -> dict:
@@ -49,9 +51,12 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         data_quality_score=data_quality_score,
     )
 
+    kpis = generate_kpis(df)
+
     return {
         "rows": rows,
         "columns": columns,
+        "kpis": kpis,
         "column_names": list(df.columns),
         "data_types": df.dtypes.astype(str).to_dict(),
         "missing_values": missing_values,
