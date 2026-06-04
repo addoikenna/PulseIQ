@@ -5,10 +5,13 @@ def generate_kpis(df: pd.DataFrame) -> list:
     kpis = []
 
     numeric_columns = df.select_dtypes(include=["number"]).columns.tolist()
-    text_columns = df.select_dtypes(include=["object"]).columns.tolist()
+    text_columns = df.select_dtypes(include=["object", "string"]).columns.tolist()
 
     # Business-style numeric KPIs
     for col in numeric_columns[:5]:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            continue
+
         clean_col_name = col.replace("_", " ").title()
 
         kpis.append({
