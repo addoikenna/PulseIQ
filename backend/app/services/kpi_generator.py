@@ -1,13 +1,12 @@
 import pandas as pd
 
 
-def generate_kpis(df: pd.DataFrame) -> list:
+def generate_kpis(df: pd.DataFrame, column_profile: dict) -> list:
     kpis = []
 
-    numeric_columns = df.select_dtypes(include=["number"]).columns.tolist()
-    text_columns = df.select_dtypes(include=["object", "string"]).columns.tolist()
+    numeric_columns = column_profile.get("numeric_columns", [])
+    categorical_columns = column_profile.get("categorical_columns", [])
 
-    # Business-style numeric KPIs
     for col in numeric_columns[:5]:
         if pd.api.types.is_datetime64_any_dtype(df[col]):
             continue
@@ -38,8 +37,7 @@ def generate_kpis(df: pd.DataFrame) -> list:
             "description": f"Highest value recorded in {col}."
         })
 
-    # Category KPIs
-    for col in text_columns[:3]:
+    for col in categorical_columns[:3]:
         if df[col].nunique(dropna=True) > 0:
             top_value = df[col].value_counts(dropna=True).idxmax()
             top_count = int(df[col].value_counts(dropna=True).max())

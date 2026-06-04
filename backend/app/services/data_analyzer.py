@@ -4,6 +4,7 @@ from app.services.chart_generator import generate_chart_recommendations
 from app.services.chart_generator import generate_chart_recommendations, generate_plotly_charts
 from app.services.kpi_generator import generate_kpis
 from app.services.filter_generator import generate_filters
+from app.services.column_profiler import profile_columns
 
 
 def analyze_dataframe(df: pd.DataFrame) -> dict:
@@ -52,9 +53,11 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         data_quality_score=data_quality_score,
     )
 
-    kpis = generate_kpis(df)
+    column_profile = profile_columns(df)
 
-    filters = generate_filters(df)
+    kpis = generate_kpis(df, column_profile)
+
+    filters = generate_filters(df, column_profile)
 
     return {
         "rows": rows,
@@ -75,6 +78,7 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "chart_recommendations": chart_recommendations,
         "charts": charts,
         "filters": filters,
+        "column_profile": column_profile,
     }
 
 
