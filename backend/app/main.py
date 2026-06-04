@@ -32,6 +32,7 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
+
 @app.get("/sample-analysis")
 def sample_analysis():
     return {
@@ -45,62 +46,60 @@ def sample_analysis():
             "total_missing_values": 1,
             "duplicate_rows": 0,
         },
-        "columns": {
-            "names": ["date", "product", "category", "sales", "quantity"],
-            "data_types": {
-                "date": "object",
-                "product": "object",
-                "category": "object",
-                "sales": "int64",
-                "quantity": "float64",
-            },
-            "numeric_columns": ["sales", "quantity"],
-            "text_columns": ["date", "product", "category"],
-            "possible_date_columns": ["date"],
+        "dashboard": {
+            "kpis": [],
+            "charts": [],
+            "filters": [],
+            "chart_recommendations": [
+                {
+                    "chart_type": "line",
+                    "title": "Sales Trend Over Time",
+                    "x_axis": "date",
+                    "y_axis": "sales",
+                    "description": "Shows how sales changes over time.",
+                },
+                {
+                    "chart_type": "bar",
+                    "title": "Count by category",
+                    "x_axis": "category",
+                    "y_axis": "count",
+                    "description": "Compares the number of records across category.",
+                },
+            ],
         },
-        "data_quality": {
-            "missing_values": {
-                "date": 0,
-                "product": 0,
-                "category": 0,
-                "sales": 0,
-                "quantity": 1,
+        "report": {
+            "insights": [
+                "The dataset contains 6 rows and 5 columns.",
+                "The data quality score is 98/100, which suggests the dataset is in good condition for analysis.",
+                "There is 1 missing value in the dataset. This should be reviewed before analysis.",
+                "No duplicate rows were detected.",
+            ],
+            "data_quality": {
+                "missing_values": {
+                    "date": 0,
+                    "product": 0,
+                    "category": 0,
+                    "sales": 0,
+                    "quantity": 1,
+                },
+                "cleaning_report": {
+                    "columns_renamed": {},
+                    "missing_markers_converted": 1,
+                    "text_values_trimmed": 2,
+                    "numeric_columns_converted": [],
+                    "date_columns_detected": ["date"],
+                    "duplicates_detected": 0,
+                    "warnings": [
+                        "Column 'quantity' has 1 missing value(s) and may need review."
+                    ],
+                },
             },
-            "cleaning_report": {
-                "columns_renamed": {},
-                "missing_markers_converted": 1,
-                "text_values_trimmed": 2,
-                "numeric_columns_converted": [],
-                "date_columns_detected": ["date"],
-                "duplicates_detected": 0,
-                "warnings": [
-                    "Column 'quantity' has 1 missing value(s) and may need review."
-                ],
-            },
+            "recommendations": [
+                "Review missing values before making business decisions.",
+                "Use dashboard filters to explore trends and segments.",
+                "Monitor top-performing categories and metrics regularly.",
+            ],
         },
-        "insights": [
-            "The dataset contains 6 rows and 5 columns.",
-            "The data quality score is 98/100, which suggests the dataset is in good condition for analysis.",
-            "There is 1 missing value in the dataset. This should be reviewed before analysis.",
-            "No duplicate rows were detected.",
-        ],
-        "chart_recommendations": [
-            {
-                "chart_type": "line",
-                "title": "Sales Trend Over Time",
-                "x_axis": "date",
-                "y_axis": "sales",
-                "description": "Shows how sales changes over time.",
-            },
-            {
-                "chart_type": "bar",
-                "title": "Count by category",
-                "x_axis": "category",
-                "y_axis": "count",
-                "description": "Compares the number of records across category.",
-            },
-        ],
-        "charts": [],
         "preview": [
             {
                 "date": "2024-01-01",
@@ -112,13 +111,47 @@ def sample_analysis():
         ],
     }
 
+
+def read_uploaded_file(file: UploadFile) -> pd.DataFrame:
+    filename = file.filename.lower()
+
+    if filename.endswith(".csv"):
+        return pd.read_csv(file.file, skipinitialspace=True)
+
+    if filename.endswith(".xlsx"):
+        return pd.read_excel(file.file, engine="openpyxl")
+
+    if filename.endswith(".xls"):
+        return pd.read_excel(file.file, engine="xlrd")
+
+    raise HTTPException(
+        status_code=400,
+        detail="Unsupported file type. Please upload a CSV or Excel file.",
+    )
+
+
 @app.post("/analyze")
 async def analyze_dataset(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Only CSV files are supported for now.")
+    allowed_extensions = (".csv", ".xlsx", ".xls")
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file uploaded.")
+
+    if not file.filename.lower().endswith(allowed_extensions):
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file type. Please upload a CSV, XLSX, or XLS file.",
+        )
 
     try:
-        df = pd.read_csv(file.file, skipinitialspace=True)
+        df = read_uploaded_file(file)
+
+        if df.empty:
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded file contains no data.",
+            )
+
         cleaned_df, cleaning_report = clean_dataframe(df)
         summary = analyze_dataframe(cleaned_df)
         summary["cleaning_report"] = cleaning_report
@@ -126,10 +159,19 @@ async def analyze_dataset(file: UploadFile = File(...)):
         return format_analysis_response(summary, file.filename)
 
     except EmptyDataError:
-        raise HTTPException(status_code=400, detail="The uploaded CSV file is empty.")
+        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
 
     except ParserError:
-        raise HTTPException(status_code=400, detail="The uploaded CSV file could not be parsed. Please check the file format.")
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded file could not be parsed. Please check the file format.",
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error while analyzing dataset: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error while analyzing dataset: {str(e)}",
+        )
