@@ -3,18 +3,14 @@ import plotly.express as px
 import plotly.io as pio
 
 
-def generate_chart_recommendations(df: pd.DataFrame) -> list:
+def generate_chart_recommendations(df: pd.DataFrame, column_profile: dict) -> list:
     charts = []
 
-    numeric_columns = df.select_dtypes(include=["number"]).columns.tolist()
-    categorical_columns = df.select_dtypes(include=["object"]).columns.tolist()
+    numeric_columns = column_profile.get("numeric_columns", [])
+    categorical_columns = column_profile.get("categorical_columns", [])
+    date_columns = column_profile.get("date_columns", [])
 
-    date_columns = []
-    for col in df.columns:
-        converted = pd.to_datetime(df[col], errors="coerce")
-        if converted.notna().sum() / max(len(df), 1) >= 0.7:
-            date_columns.append(col)
-
+    # Numeric distribution charts
     for col in numeric_columns[:3]:
         charts.append({
             "chart_type": "histogram",
@@ -24,6 +20,7 @@ def generate_chart_recommendations(df: pd.DataFrame) -> list:
             "description": f"Shows how values in {col} are distributed."
         })
 
+    # Category count charts
     for cat_col in categorical_columns[:3]:
         unique_count = df[cat_col].nunique(dropna=True)
 
@@ -44,6 +41,7 @@ def generate_chart_recommendations(df: pd.DataFrame) -> list:
                 "description": f"Shows the percentage share of each {cat_col} group."
             })
 
+    # Date trend charts
     if date_columns and numeric_columns:
         date_col = date_columns[0]
 
@@ -56,6 +54,7 @@ def generate_chart_recommendations(df: pd.DataFrame) -> list:
                 "description": f"Shows how {num_col} changes over time."
             })
 
+    # Relationship chart
     if len(numeric_columns) >= 2:
         charts.append({
             "chart_type": "scatter",
@@ -65,28 +64,17 @@ def generate_chart_recommendations(df: pd.DataFrame) -> list:
             "description": f"Shows the relationship between {numeric_columns[0]} and {numeric_columns[1]}."
         })
 
-        charts.append({
-            "chart_type": "heatmap",
-            "title": "Correlation Heatmap",
-            "columns": numeric_columns,
-            "description": "Shows relationships between numeric columns."
-        })
-
     return charts
 
 
-def generate_plotly_charts(df: pd.DataFrame) -> list:
+def generate_plotly_charts(df: pd.DataFrame, column_profile: dict) -> list:
     charts = []
 
-    numeric_columns = df.select_dtypes(include=["number"]).columns.tolist()
-    categorical_columns = df.select_dtypes(include=["object"]).columns.tolist()
+    numeric_columns = column_profile.get("numeric_columns", [])
+    categorical_columns = column_profile.get("categorical_columns", [])
+    date_columns = column_profile.get("date_columns", [])
 
-    date_columns = []
-    for col in df.columns:
-        converted = pd.to_datetime(df[col], errors="coerce")
-        if converted.notna().sum() / max(len(df), 1) >= 0.7:
-            date_columns.append(col)
-
+    # Numeric histograms
     for col in numeric_columns[:3]:
         fig = px.histogram(df, x=col, title=f"Distribution of {col}")
         charts.append({
@@ -95,6 +83,7 @@ def generate_plotly_charts(df: pd.DataFrame) -> list:
             "figure": pio.to_json(fig)
         })
 
+    # Categorical charts
     for cat_col in categorical_columns[:3]:
         counts = df[cat_col].value_counts().reset_index()
         counts.columns = [cat_col, "count"]
@@ -114,12 +103,16 @@ def generate_plotly_charts(df: pd.DataFrame) -> list:
                 "figure": pio.to_json(fig)
             })
 
+    # Date trend charts
     if date_columns and numeric_columns:
         date_col = date_columns[0]
-        df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+
+        chart_df = df.copy()
+        chart_df[date_col] = pd.to_datetime(chart_df[date_col], errors="coerce")
+        chart_df = chart_df.dropna(subset=[date_col])
 
         for num_col in numeric_columns[:2]:
-            trend = df.groupby(date_col)[num_col].sum().reset_index()
+            trend = chart_df.groupby(date_col)[num_col].sum().reset_index()
             fig = px.line(trend, x=date_col, y=num_col, title=f"{num_col} Trend Over Time")
             charts.append({
                 "chart_type": "line",
@@ -127,6 +120,7 @@ def generate_plotly_charts(df: pd.DataFrame) -> list:
                 "figure": pio.to_json(fig)
             })
 
+    # Scatter chart
     if len(numeric_columns) >= 2:
         fig = px.scatter(
             df,

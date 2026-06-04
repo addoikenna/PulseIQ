@@ -1,6 +1,5 @@
 import pandas as pd
 
-from app.services.chart_generator import generate_chart_recommendations
 from app.services.chart_generator import generate_chart_recommendations, generate_plotly_charts
 from app.services.kpi_generator import generate_kpis
 from app.services.filter_generator import generate_filters
@@ -17,14 +16,11 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
     total_missing = int(df.isnull().sum().sum())
     duplicate_rows = int(df.duplicated().sum())
 
-    numeric_columns = df.select_dtypes(include=["number"]).columns.tolist()
-    text_columns = df.select_dtypes(include=["object"]).columns.tolist()
+    column_profile = profile_columns(df)
 
-    possible_date_columns = []
-    for col in df.columns:
-        converted = pd.to_datetime(df[col], errors="coerce")
-        if converted.notna().sum() / max(len(df), 1) >= 0.7:
-            possible_date_columns.append(col)
+    numeric_columns = column_profile.get("numeric_columns", [])
+    text_columns = column_profile.get("categorical_columns", []) + column_profile.get("text_columns", [])
+    possible_date_columns = column_profile.get("date_columns", [])
 
     summary_statistics = df.describe(include="all").fillna("").to_dict()
 
@@ -38,10 +34,6 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
 
     data_quality_score = max(data_quality_score, 0)
 
-    chart_recommendations = generate_chart_recommendations(df)
-
-    charts = generate_plotly_charts(df)
-
     insights = generate_basic_insights(
         rows=rows,
         columns=columns,
@@ -53,11 +45,10 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         data_quality_score=data_quality_score,
     )
 
-    column_profile = profile_columns(df)
-
     kpis = generate_kpis(df, column_profile)
-
     filters = generate_filters(df, column_profile)
+    chart_recommendations = generate_chart_recommendations(df, column_profile)
+    charts = generate_plotly_charts(df, column_profile)
 
     return {
         "rows": rows,
@@ -94,9 +85,7 @@ def generate_basic_insights(
 ) -> list:
     insights = []
 
-    insights.append(
-        f"The dataset contains {rows} rows and {columns} columns."
-    )
+    insights.append(f"The dataset contains {rows} rows and {columns} columns.")
 
     if data_quality_score >= 80:
         insights.append(
@@ -116,18 +105,14 @@ def generate_basic_insights(
             f"There are {total_missing} missing values in the dataset. These should be reviewed before analysis."
         )
     else:
-        insights.append(
-            "There are no missing values detected in the dataset."
-        )
+        insights.append("There are no missing values detected in the dataset.")
 
     if duplicate_rows > 0:
         insights.append(
             f"There are {duplicate_rows} duplicate rows. You may need to remove them to avoid misleading results."
         )
     else:
-        insights.append(
-            "No duplicate rows were detected."
-        )
+        insights.append("No duplicate rows were detected.")
 
     if numeric_columns:
         insights.append(
