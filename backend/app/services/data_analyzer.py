@@ -35,7 +35,7 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
 
     data_quality_score = max(data_quality_score, 0)
 
-    iinsights = generate_basic_insights(
+    insights = generate_basic_insights(
         rows=rows,
         columns=columns,
         total_missing=total_missing,
