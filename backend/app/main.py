@@ -6,6 +6,7 @@ from pandas.errors import EmptyDataError, ParserError
 from app.services.data_analyzer import analyze_dataframe
 from app.services.data_cleaner import clean_dataframe
 from app.services.response_formatter import format_analysis_response
+from app.services.file_handler import read_uploaded_file
 
 
 app = FastAPI(
@@ -112,24 +113,6 @@ def sample_analysis():
     }
 
 
-def read_uploaded_file(file: UploadFile) -> pd.DataFrame:
-    filename = file.filename.lower()
-
-    if filename.endswith(".csv"):
-        return pd.read_csv(file.file, skipinitialspace=True)
-
-    if filename.endswith(".xlsx"):
-        return pd.read_excel(file.file, engine="openpyxl")
-
-    if filename.endswith(".xls"):
-        return pd.read_excel(file.file, engine="xlrd")
-
-    raise HTTPException(
-        status_code=400,
-        detail="Unsupported file type. Please upload a CSV or Excel file.",
-    )
-
-
 @app.post("/analyze")
 async def analyze_dataset(file: UploadFile = File(...)):
     allowed_extensions = (".csv", ".xlsx", ".xls")
@@ -157,7 +140,7 @@ async def analyze_dataset(file: UploadFile = File(...)):
         summary["cleaning_report"] = cleaning_report
 
         return format_analysis_response(summary, file.filename)
-
+        
     except EmptyDataError:
         raise HTTPException(status_code=400, detail="The uploaded file is empty.")
 
