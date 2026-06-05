@@ -7,6 +7,7 @@ from app.services.data_analyzer import analyze_dataframe
 from app.services.data_cleaner import clean_dataframe
 from app.services.response_formatter import format_analysis_response
 from app.services.file_handler import read_uploaded_file
+from app.schemas.analysis import AnalysisResponse
 
 
 app = FastAPI(
@@ -34,7 +35,7 @@ def health_check():
     return {"status": "healthy"}
 
 
-@app.get("/sample-analysis")
+@app.get("/sample-analysis", response_model=AnalysisResponse)
 def sample_analysis():
     return {
         "status": "success",
@@ -113,7 +114,7 @@ def sample_analysis():
     }
 
 
-@app.post("/analyze")
+@app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_dataset(file: UploadFile = File(...)):
     allowed_extensions = (".csv", ".xlsx", ".xls")
 
@@ -140,7 +141,7 @@ async def analyze_dataset(file: UploadFile = File(...)):
         summary["cleaning_report"] = cleaning_report
 
         return format_analysis_response(summary, file.filename)
-        
+
     except EmptyDataError:
         raise HTTPException(status_code=400, detail="The uploaded file is empty.")
 
