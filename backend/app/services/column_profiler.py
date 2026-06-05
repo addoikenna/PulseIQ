@@ -20,22 +20,22 @@ def profile_columns(df: pd.DataFrame) -> dict:
         unique_count = non_null.nunique()
         unique_ratio = unique_count / row_count
 
-        if pd.api.types.is_bool_dtype(series):
-            profile["boolean_columns"].append(col)
-            continue
-
-        if pd.api.types.is_datetime64_any_dtype(series):
-            profile["date_columns"].append(col)
-            continue
-
         if pd.api.types.is_numeric_dtype(series):
             col_lower = col.lower()
 
-            if (
-                "id" in col_lower
-                or unique_ratio > 0.9
-                and unique_count > 10
-            ):
+            id_keywords = ["id", "uuid", "code", "ref", "reference", "serial"]
+
+            metric_keywords = [
+                "sales", "profit", "revenue", "amount", "price", "cost",
+                "quantity", "qty", "income", "expense", "margin", "rate",
+                "score", "value", "total", "balance", "salary", "rent"
+            ]
+
+            if any(keyword in col_lower for keyword in metric_keywords):
+                profile["numeric_columns"].append(col)
+            elif any(keyword in col_lower for keyword in id_keywords):
+                profile["id_columns"].append(col)
+            elif unique_ratio > 0.98 and unique_count > 50:
                 profile["id_columns"].append(col)
             else:
                 profile["numeric_columns"].append(col)

@@ -12,6 +12,8 @@ def format_analysis_response(summary: dict, filename: str) -> dict:
             "duplicate_rows": summary.get("duplicate_rows"),
         },
 
+        "column_profile": summary.get("column_profile"),
+
         "dashboard": {
             "kpis": summary.get("kpis"),
             "charts": summary.get("charts"),
