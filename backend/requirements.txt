@@ -6,3 +6,5 @@ plotly
 plotly
 openpyxl
 xlrd
+requests
+python-dotenv

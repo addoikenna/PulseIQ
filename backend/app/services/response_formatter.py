@@ -26,6 +26,7 @@ def format_analysis_response(summary: dict, filename: str) -> dict:
             "data_quality": {
                 "missing_values": summary.get("missing_values"),
                 "cleaning_report": summary.get("cleaning_report"),
+                "executive_analysis": summary.get("executive_analysis"),
             },
             "recommendations": [
                 "Review missing values before making business decisions.",
