@@ -4,7 +4,6 @@ import pandas as pd
 def generate_filters(df: pd.DataFrame, column_profile: dict) -> list:
     filters = []
 
-    numeric_columns = column_profile.get("numeric_columns", [])
     categorical_columns = column_profile.get("categorical_columns", [])
     date_columns = column_profile.get("date_columns", [])
 
@@ -12,7 +11,7 @@ def generate_filters(df: pd.DataFrame, column_profile: dict) -> list:
     for col in categorical_columns[:5]:
         unique_values = df[col].dropna().unique().tolist()
 
-        if 2 <= len(unique_values) <= 30:
+        if 2 <= len(unique_values) <= 50:
             filters.append({
                 "label": col.replace("_", " ").title(),
                 "column": col,
@@ -22,7 +21,7 @@ def generate_filters(df: pd.DataFrame, column_profile: dict) -> list:
             })
 
     # Date range filters
-    for col in date_columns[:2]:
+    for col in date_columns[:1]:
         converted = pd.to_datetime(df[col], errors="coerce")
 
         filters.append({
@@ -32,17 +31,6 @@ def generate_filters(df: pd.DataFrame, column_profile: dict) -> list:
             "min": str(converted.min().date()) if converted.notna().any() else None,
             "max": str(converted.max().date()) if converted.notna().any() else None,
             "description": f"Filter dashboard by {col} date range."
-        })
-
-    # Numeric range filters
-    for col in numeric_columns[:5]:
-        filters.append({
-            "label": col.replace("_", " ").title(),
-            "column": col,
-            "type": "number_range",
-            "min": float(df[col].min(skipna=True)) if df[col].notna().any() else None,
-            "max": float(df[col].max(skipna=True)) if df[col].notna().any() else None,
-            "description": f"Filter dashboard by {col} range."
         })
 
     return filters
