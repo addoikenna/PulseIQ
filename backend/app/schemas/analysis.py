@@ -8,7 +8,10 @@ class AnalysisResponse(BaseModel):
     filename: str
 
     overview: dict[str, Any]
+    column_profile: dict[str, Any] | None = None
     dashboard: dict[str, Any]
     report: dict[str, Any]
 
     preview: list[dict[str, Any]]
+    data: list[dict[str, Any]] | None = None
+    
