@@ -88,6 +88,7 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "summary_statistics": summary_statistics,
         "data_quality_score": data_quality_score,
         "preview": preview,
+        "data": df.fillna("").to_dict(orient="records"),
         "insights": insights,
         "chart_recommendations": chart_recommendations,
         "charts": charts,
