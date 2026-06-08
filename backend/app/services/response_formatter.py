@@ -19,6 +19,7 @@ def format_analysis_response(summary: dict, filename: str) -> dict:
             "charts": summary.get("charts"),
             "filters": summary.get("filters"),
             "chart_recommendations": summary.get("chart_recommendations"),
+            "dashboard_plan": summary.get("dashboard_plan"),
         },
 
         "report": {

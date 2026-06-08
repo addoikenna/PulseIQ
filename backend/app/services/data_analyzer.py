@@ -6,6 +6,7 @@ from app.services.filter_generator import generate_filters
 from app.services.column_profiler import profile_columns
 from app.services.insight_generator import generate_basic_insights
 from app.services.llm_report_generator import generate_llm_executive_analysis
+from app.services.llm_dashboard_planner import generate_llm_dashboard_plan
 
 
 def analyze_dataframe(df: pd.DataFrame) -> dict:
@@ -42,10 +43,39 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
 
     data_quality_score = max(data_quality_score, 0)
 
-    kpis = generate_kpis(df, column_profile)
+    dashboard_plan_summary = {
+        "rows": rows,
+        "columns": columns,
+        "data_quality_score": data_quality_score,
+        "column_profile": column_profile,
+        "summary_statistics": summary_statistics,
+        "preview": df.head(5).fillna("").to_dict(orient="records"),
+    }
+
+    dashboard_plan = generate_llm_dashboard_plan(
+        summary=dashboard_plan_summary,
+        column_profile=column_profile,
+    )
+
+    kpis = generate_kpis(
+        df=df,
+        column_profile=column_profile,
+        kpi_plan=dashboard_plan.get("kpi_plan"),
+    )
+
     filters = generate_filters(df, column_profile)
-    chart_recommendations = generate_chart_recommendations(df, column_profile)
-    charts = generate_plotly_charts(df, column_profile)
+
+    chart_recommendations = generate_chart_recommendations(
+        df=df,
+        column_profile=column_profile,
+        chart_plan=dashboard_plan.get("chart_plan"),
+    )
+
+    charts = generate_plotly_charts(
+        df=df,
+        column_profile=column_profile,
+        chart_plan=dashboard_plan.get("chart_plan"),
+    )
 
     insights = generate_basic_insights(
         rows=rows,
@@ -95,4 +125,5 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "filters": filters,
         "column_profile": column_profile,
         "executive_analysis": executive_analysis,
+        "dashboard_plan": dashboard_plan,
     }
