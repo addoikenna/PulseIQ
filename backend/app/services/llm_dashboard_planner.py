@@ -106,6 +106,13 @@ Rules:
 - Use categorical columns and date columns as filters.
 - Do not use numeric columns as filters.
 
+Choose aggregation based on metric meaning:
+- Use average for bounded metrics, performance metrics, scores, ratings, grades, percentages, rates, ratios, indexes, and normalized values.
+- Use sum for additive metrics such as money, quantities, units, costs, revenue, expenses, totals, and counts already represented as numeric measures.
+- Use count for record counts by category.
+- Never sum or average identifier columns.
+- For counts of entities, count rows or non-null records, not ID values.
+
 Dataset summary:
 {json.dumps(compact_summary, default=str)}
 """
