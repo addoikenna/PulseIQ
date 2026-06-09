@@ -219,6 +219,14 @@ def validate_dashboard_plan(plan: dict[str, Any], column_profile: dict) -> dict[
         if kpi_type == "top_category" and column not in categorical_columns:
             continue
 
+        if kpi_type in ["sum", "average", "maximum", "minimum"]:
+            safe_aggregation = infer_safe_aggregation(column, kpi_type)
+
+            if safe_aggregation == "average" and kpi_type == "sum":
+                kpi["type"] = "average"
+                if kpi.get("label"):
+                    kpi["label"] = kpi["label"].replace("Total", "Average")
+
         valid_kpis.append(kpi)
 
     valid_charts = []
@@ -255,6 +263,12 @@ def validate_dashboard_plan(plan: dict[str, Any], column_profile: dict) -> dict[
         if chart_type == "scatter":
             if x_axis not in numeric_columns or y_axis not in numeric_columns:
                 continue
+        
+        if y_axis and y_axis not in ["count", "none"]:
+            chart["aggregation"] = infer_safe_aggregation(
+                y_axis,
+                chart.get("aggregation")
+            )
 
         valid_charts.append(chart)
 
