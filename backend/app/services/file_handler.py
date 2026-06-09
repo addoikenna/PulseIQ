@@ -3,6 +3,8 @@ import pandas as pd
 
 
 ALLOWED_EXTENSIONS = (".csv", ".xlsx", ".xls")
+MAX_FILE_SIZE_MB = 5
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 
 def validate_uploaded_file(file: UploadFile) -> None:
@@ -16,8 +18,21 @@ def validate_uploaded_file(file: UploadFile) -> None:
         )
 
 
+def validate_file_size(file: UploadFile) -> None:
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+
+    if file_size > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Please upload a file under {MAX_FILE_SIZE_MB}MB for now.",
+        )
+
+
 def read_uploaded_file(file: UploadFile) -> pd.DataFrame:
     validate_uploaded_file(file)
+    validate_file_size(file)
 
     filename = file.filename.lower()
 

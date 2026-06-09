@@ -14,4 +14,4 @@ class AnalysisResponse(BaseModel):
 
     preview: list[dict[str, Any]]
     data: list[dict[str, Any]] | None = None
-    
+    processing: dict[str, Any] | None = None

@@ -8,12 +8,22 @@ from app.services.insight_generator import generate_basic_insights
 from app.services.llm_report_generator import generate_llm_executive_analysis
 from app.services.llm_dashboard_planner import generate_llm_dashboard_plan
 
+MAX_FRONTEND_ROWS = 10000
+CHART_SAMPLE_ROWS = 10000
 
 def analyze_dataframe(df: pd.DataFrame) -> dict:
     df = df.replace(r"^\s*$", pd.NA, regex=True)
     df = df.replace(["N/A", "NA", "null", "NULL", "None", "none", "?"], pd.NA)
 
     rows, columns = df.shape
+
+    is_large_dataset = rows > MAX_FRONTEND_ROWS
+
+    chart_df = (
+        df.sample(n=CHART_SAMPLE_ROWS, random_state=42)
+        if rows > CHART_SAMPLE_ROWS
+        else df
+    )
 
     missing_values = df.isnull().sum().to_dict()
     total_missing = int(df.isnull().sum().sum())
@@ -66,13 +76,13 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
     filters = generate_filters(df, column_profile)
 
     chart_recommendations = generate_chart_recommendations(
-        df=df,
+        df=chart_df,
         column_profile=column_profile,
         chart_plan=dashboard_plan.get("chart_plan"),
     )
 
     charts = generate_plotly_charts(
-        df=df,
+        df=chart_df,
         column_profile=column_profile,
         chart_plan=dashboard_plan.get("chart_plan"),
     )
@@ -118,7 +128,18 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "summary_statistics": summary_statistics,
         "data_quality_score": data_quality_score,
         "preview": preview,
-        "data": df.fillna("").to_dict(orient="records"),
+        "data": df.fillna("").to_dict(orient="records") if not is_large_dataset else [],
+        "processing": {
+            "is_large_dataset": is_large_dataset,
+            "row_level_data_returned": not is_large_dataset,
+            "max_frontend_rows": MAX_FRONTEND_ROWS,
+            "chart_sample_rows": CHART_SAMPLE_ROWS,
+            "message": (
+                "Large dataset detected. Dashboard charts were generated from a sample, and row-level frontend filtering is disabled."
+                if is_large_dataset
+                else "Full row-level data returned for interactive dashboard filtering."
+            ),
+        },
         "insights": insights,
         "chart_recommendations": chart_recommendations,
         "charts": charts,

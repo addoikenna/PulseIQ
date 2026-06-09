@@ -42,4 +42,5 @@ def format_analysis_response(summary: dict, filename: str) -> dict:
 
         "preview": summary.get("preview"),
         "data": summary.get("data"),
+        "processing": summary.get("processing"),
     }
