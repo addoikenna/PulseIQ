@@ -160,6 +160,33 @@ def call_openrouter(model: str, prompt: str) -> dict[str, Any]:
     return parse_llm_json(content)
 
 
+def infer_safe_aggregation(column: str, requested_aggregation: str | None = None) -> str:
+    column_lower = column.lower()
+
+    average_keywords = [
+        "score", "rating", "grade", "gpa", "cgpa", "percentage",
+        "percent", "rate", "ratio", "index", "margin", "average",
+        "avg", "satisfaction", "performance"
+    ]
+
+    sum_keywords = [
+        "sales", "revenue", "profit", "amount", "cost", "quantity",
+        "qty", "total", "spend", "budget", "expense", "income",
+        "units", "orders", "budget"
+    ]
+
+    if any(keyword in column_lower for keyword in average_keywords):
+        return "average"
+
+    if any(keyword in column_lower for keyword in sum_keywords):
+        return "sum"
+
+    if requested_aggregation in ["sum", "average", "count", "maximum", "minimum", "none"]:
+        return requested_aggregation
+
+    return "sum"
+
+
 def validate_dashboard_plan(plan: dict[str, Any], column_profile: dict) -> dict[str, Any]:
     all_columns = set(
         column_profile.get("date_columns", [])
