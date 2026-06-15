@@ -7,7 +7,7 @@ def generate_kpis(
     kpi_plan: list | None = None
 ) -> list:
     if kpi_plan:
-        planned_kpis = generate_kpis_from_plan(df, kpi_plan)
+        planned_kpis = generate_kpis_from_plan(df, kpi_plan, column_profile)
 
         if planned_kpis:
             return planned_kpis
@@ -15,8 +15,14 @@ def generate_kpis(
     return generate_rule_based_kpis(df, column_profile)
 
 
-def generate_kpis_from_plan(df: pd.DataFrame, kpi_plan: list) -> list:
+def generate_kpis_from_plan(
+    df: pd.DataFrame,
+    kpi_plan: list,
+    column_profile: dict
+) -> list:
     kpis = []
+
+    blocked_columns = set(column_profile.get("id_columns", [])) | set(column_profile.get("contact_columns", []))
 
     for item in kpi_plan:
         label = item.get("label")
@@ -28,6 +34,9 @@ def generate_kpis_from_plan(df: pd.DataFrame, kpi_plan: list) -> list:
             continue
 
         if column not in df.columns:
+            continue
+
+        if column in blocked_columns:
             continue
 
         series = df[column]
@@ -75,38 +84,72 @@ def generate_rule_based_kpis(df: pd.DataFrame, column_profile: dict) -> list:
 
     numeric_columns = column_profile.get("numeric_columns", [])
     categorical_columns = column_profile.get("categorical_columns", [])
+    performance_columns = set(column_profile.get("performance_metric_columns", []))
+    blocked_columns = set(column_profile.get("id_columns", [])) | set(column_profile.get("contact_columns", []))
 
     for col in numeric_columns[:5]:
+        if col in blocked_columns:
+            continue
+
         if pd.api.types.is_datetime64_any_dtype(df[col]):
             continue
 
         clean_col_name = col.replace("_", " ").title()
 
-        kpis.append({
-            "label": f"Total {clean_col_name}",
-            "value": float(df[col].sum(skipna=True)),
-            "type": "sum",
-            "source_column": col,
-            "description": f"Sum of all values in {col}."
-        })
+        if col in performance_columns:
+            kpis.append({
+                "label": f"Average {clean_col_name}",
+                "value": float(df[col].mean(skipna=True)),
+                "type": "average",
+                "source_column": col,
+                "description": f"Average value of {col}."
+            })
 
-        kpis.append({
-            "label": f"Average {clean_col_name}",
-            "value": float(df[col].mean(skipna=True)),
-            "type": "average",
-            "source_column": col,
-            "description": f"Average value of {col}."
-        })
+            kpis.append({
+                "label": f"Maximum {clean_col_name}",
+                "value": float(df[col].max(skipna=True)),
+                "type": "maximum",
+                "source_column": col,
+                "description": f"Highest value recorded in {col}."
+            })
 
-        kpis.append({
-            "label": f"Maximum {clean_col_name}",
-            "value": float(df[col].max(skipna=True)),
-            "type": "maximum",
-            "source_column": col,
-            "description": f"Highest value recorded in {col}."
-        })
+            kpis.append({
+                "label": f"Minimum {clean_col_name}",
+                "value": float(df[col].min(skipna=True)),
+                "type": "minimum",
+                "source_column": col,
+                "description": f"Lowest value recorded in {col}."
+            })
+
+        else:
+            kpis.append({
+                "label": f"Total {clean_col_name}",
+                "value": float(df[col].sum(skipna=True)),
+                "type": "sum",
+                "source_column": col,
+                "description": f"Sum of all values in {col}."
+            })
+
+            kpis.append({
+                "label": f"Average {clean_col_name}",
+                "value": float(df[col].mean(skipna=True)),
+                "type": "average",
+                "source_column": col,
+                "description": f"Average value of {col}."
+            })
+
+            kpis.append({
+                "label": f"Maximum {clean_col_name}",
+                "value": float(df[col].max(skipna=True)),
+                "type": "maximum",
+                "source_column": col,
+                "description": f"Highest value recorded in {col}."
+            })
 
     for col in categorical_columns[:3]:
+        if col in blocked_columns:
+            continue
+
         if df[col].nunique(dropna=True) > 0:
             top_value = df[col].value_counts(dropna=True).idxmax()
             top_count = int(df[col].value_counts(dropna=True).max())

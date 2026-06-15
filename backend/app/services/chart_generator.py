@@ -50,7 +50,8 @@ def generate_charts_from_plan(df: pd.DataFrame, chart_plan: list) -> list:
         title = chart.get("title")
         x_axis = chart.get("x_axis")
         y_axis = chart.get("y_axis")
-        aggregation = chart.get("aggregation", "sum")
+        # aggregation = chart.get("aggregation", "sum")
+        aggregation = chart.get("aggregation") or "sum"
         time_grain = chart.get("time_grain", "month")
 
         if not chart_type or not title:
@@ -286,7 +287,11 @@ def generate_rule_based_plotly_charts(df: pd.DataFrame, column_profile: dict) ->
                 df=df,
                 date_column=date_col,
                 metric_column=num_col,
-                aggregation="average" if "salary" in num_col.lower() else "sum",
+                aggregation=(
+                    "average"
+                    if num_col in column_profile.get("performance_metric_columns", [])
+                    else "sum"
+                ),
                 time_grain="month",
             )
 

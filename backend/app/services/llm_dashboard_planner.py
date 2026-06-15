@@ -201,6 +201,12 @@ def validate_dashboard_plan(plan: dict[str, Any], column_profile: dict) -> dict[
     categorical_columns = set(column_profile.get("categorical_columns", []))
     date_columns = set(column_profile.get("date_columns", []))
     id_columns = set(column_profile.get("id_columns", []))
+    contact_columns = set(column_profile.get("contact_columns", []))
+    financial_columns = set(column_profile.get("financial_columns", []))
+    performance_metric_columns = set(column_profile.get("performance_metric_columns", []))
+    count_metric_columns = set(column_profile.get("count_metric_columns", []))
+
+    blocked_columns = id_columns.union(contact_columns)
 
     valid_kpis = []
     for kpi in plan.get("kpi_plan", []):
@@ -210,7 +216,7 @@ def validate_dashboard_plan(plan: dict[str, Any], column_profile: dict) -> dict[
         if column not in all_columns:
             continue
 
-        if column in id_columns and kpi_type != "count":
+        if column in blocked_columns:
             continue
 
         if kpi_type in ["sum", "average", "maximum", "minimum"] and column not in numeric_columns:
@@ -226,6 +232,13 @@ def validate_dashboard_plan(plan: dict[str, Any], column_profile: dict) -> dict[
                 kpi["type"] = "average"
                 if kpi.get("label"):
                     kpi["label"] = kpi["label"].replace("Total", "Average")
+        
+        if column in performance_metric_columns and kpi_type == "sum":
+            kpi["type"] = "average"
+            kpi["label"] = kpi.get("label", "").replace("Total", "Average")
+
+        if column in financial_columns and kpi_type not in ["sum", "average", "maximum", "minimum"]:
+            continue
 
         valid_kpis.append(kpi)
 
@@ -269,6 +282,15 @@ def validate_dashboard_plan(plan: dict[str, Any], column_profile: dict) -> dict[
                 y_axis,
                 chart.get("aggregation")
             )
+
+        if x_axis in blocked_columns or y_axis in blocked_columns:
+            continue
+
+        if y_axis in performance_metric_columns:
+            chart["aggregation"] = "average"
+
+        if y_axis in financial_columns and chart.get("aggregation") in [None, "none"]:
+            chart["aggregation"] = "sum"
 
         valid_charts.append(chart)
 
