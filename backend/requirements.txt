@@ -8,3 +8,4 @@ openpyxl
 xlrd
 requests
 python-dotenv
+supabase
