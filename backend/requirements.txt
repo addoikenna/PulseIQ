@@ -9,3 +9,4 @@ xlrd
 requests
 python-dotenv
 supabase
+PyJWT

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pandas.errors import EmptyDataError, ParserError
 
@@ -8,6 +8,7 @@ from app.services.response_formatter import format_analysis_response
 from app.services.file_handler import read_uploaded_file
 from app.schemas.analysis import AnalysisResponse
 from app.routes.analyses import router as analyses_router
+from app.services.auth import get_current_user_id
 
 
 app = FastAPI(
@@ -236,3 +237,19 @@ async def analyze_dataset(file: UploadFile = File(...)):
             status_code=500,
             detail=f"Unexpected error while analyzing dataset: {str(e)}",
         )
+
+#----------------------------------
+# Local Test
+#----------------------------------
+
+@app.get(
+    "/me",
+    tags=["System"],
+    summary="Current User"
+)
+def me(
+    user_id: str = Depends(get_current_user_id)
+):
+    return {
+        "user_id": user_id
+    }

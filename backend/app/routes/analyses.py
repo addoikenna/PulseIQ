@@ -1,12 +1,15 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Depends
 from app.services.supabase_client import get_supabase_client
+from app.services.auth import get_current_user_id
 
 
 router = APIRouter(prefix="/analyses", tags=["Analyses"])
 
 
 @router.get("")
-def list_analyses(user_id: str = Query(...)):
+def list_analyses(
+    user_id: str = Depends(get_current_user_id)
+):
     try:
         supabase = get_supabase_client()
 
@@ -29,7 +32,10 @@ def list_analyses(user_id: str = Query(...)):
 
 
 @router.get("/{analysis_id}")
-def get_analysis(analysis_id: str, user_id: str = Query(...)):
+def get_analysis(
+    analysis_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
     try:
         supabase = get_supabase_client()
 
@@ -58,7 +64,10 @@ def get_analysis(analysis_id: str, user_id: str = Query(...)):
 
 
 @router.patch("/{analysis_id}/archive")
-def archive_analysis(analysis_id: str, user_id: str = Query(...)):
+def archive_analysis(
+    analysis_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
     try:
         supabase = get_supabase_client()
 
