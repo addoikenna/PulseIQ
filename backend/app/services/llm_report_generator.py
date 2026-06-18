@@ -5,8 +5,13 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
+from google import genai
+
 
 load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_PRIMARY_MODEL = os.getenv(
@@ -30,12 +35,14 @@ DEFAULT_EXECUTIVE_ANALYSIS = {
     "risks": [],
     "recommendations": [],
     "next_actions": [],
+    "provider": "fallback",
+    "model_used": None,
 }
 
 
 def parse_llm_json(content: str) -> dict[str, Any]:
     if not content:
-        raise ValueError("OpenRouter returned empty content.")
+        raise ValueError("LLM returned empty content.")
 
     content = content.strip()
 
@@ -140,13 +147,46 @@ def call_openrouter(model: str, prompt: str) -> dict[str, Any]:
     result = response.json()
     content = result["choices"][0]["message"].get("content", "")
 
-    print("OpenRouter raw response:", content)
+    # print("OpenRouter raw response:", content)
+
+    return parse_llm_json(content)
+
+
+def call_gemini(prompt: str) -> dict[str, Any]:
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY is not configured.")
+
+    client = genai.Client(api_key=GEMINI_API_KEY)
+
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+    )
+
+    content = response.text or ""
 
     return parse_llm_json(content)
 
 
 def generate_llm_executive_analysis(summary: dict[str, Any]) -> dict[str, Any]:
     prompt = build_report_prompt(summary)
+
+    try:
+        report = call_gemini(prompt)
+
+        return {
+            "executive_summary": report.get("executive_summary", []),
+            "key_findings": report.get("key_findings", []),
+            "opportunities": report.get("opportunities", []),
+            "risks": report.get("risks", []),
+            "recommendations": report.get("recommendations", []),
+            "next_actions": report.get("next_actions", []),
+            "model_used": GEMINI_MODEL,
+            "provider": "gemini",
+        }
+
+    except Exception as e:
+        print(f"Gemini executive analysis error: {e}")
 
     for model in [OPENROUTER_PRIMARY_MODEL, OPENROUTER_FALLBACK_MODEL]:
         try:
@@ -160,6 +200,7 @@ def generate_llm_executive_analysis(summary: dict[str, Any]) -> dict[str, Any]:
                 "recommendations": report.get("recommendations", []),
                 "next_actions": report.get("next_actions", []),
                 "model_used": model,
+                "provider": "openrouter",
             }
 
         except Exception as e:
