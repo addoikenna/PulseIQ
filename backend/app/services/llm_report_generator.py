@@ -35,6 +35,7 @@ DEFAULT_EXECUTIVE_ANALYSIS = {
     "risks": [],
     "recommendations": [],
     "next_actions": [],
+    "confidence_level": "low",
     "provider": "fallback",
     "model_used": None,
 }
@@ -72,38 +73,107 @@ def build_report_prompt(summary: dict[str, Any]) -> str:
             "duplicate_rows": summary.get("duplicate_rows"),
         },
         "column_profile": summary.get("column_profile"),
+        "business_metrics": summary.get("business_metrics"),
+        "chart_summary": summary.get("chart_summary"),
         "kpis": summary.get("kpis"),
         "missing_values": summary.get("missing_values"),
         "insights": summary.get("insights"),
+        "data_quality_summary": summary.get("data_quality_summary"),
         "preview": summary.get("preview"),
     }
 
     return f"""
-You are PulseIQ, an executive data analyst.
+You are PulseIQ, a senior Business Intelligence Consultant and Executive Advisor.
 
-Analyze the dataset summary below and produce a concise business report.
+Your audience is:
+- CEOs
+- Founders
+- Business Managers
+- Department Heads
+- Investors
 
-Return ONLY valid JSON. Do not use markdown. Do not wrap the response in code fences.
+Analyze the information provided and generate an executive-level business report.
 
-The JSON must use exactly these keys:
+Focus on:
+- Business performance
+- Trends and patterns
+- Operational opportunities
+- Strategic risks
+- Growth opportunities
+- Resource allocation insights
+- Areas requiring management attention
+
+Do NOT focus on:
+- Number of rows
+- Number of columns
+- Technical dataset structure
+- Programming concepts
+
+Only mention data quality concerns if they materially affect decision-making.
+
+Return ONLY valid JSON.
+
+The JSON must contain exactly:
+
 {{
-  "executive_summary": ["..."],
-  "key_findings": ["..."],
-  "opportunities": ["..."],
-  "risks": ["..."],
-  "recommendations": ["..."],
-  "next_actions": ["..."]
+  "executive_summary": [
+    "..."
+  ],
+  "key_findings": [
+    "..."
+  ],
+  "opportunities": [
+    "..."
+  ],
+  "risks": [
+    "..."
+  ],
+  "recommendations": [
+    "..."
+  ],
+  "next_actions": [
+    "..."
+  ],
+  "confidence_level": "high | medium | low"
 }}
 
-Rules:
-- Do not invent facts not supported by the data summary.
-- Keep language clear, professional, and business-friendly.
-- Mention uncertainty where data is limited.
-- Avoid technical jargon.
-- Keep each bullet concise.
-- Each section should contain 2 to 5 bullet strings where possible.
+Guidelines:
 
-Dataset summary:
+EXECUTIVE SUMMARY
+- 3 to 5 concise bullets.
+- Summarize overall business performance.
+- Highlight major observations.
+
+KEY FINDINGS
+- Most important business observations.
+- Mention dominant categories, top metrics, trends, and patterns.
+
+OPPORTUNITIES
+- Revenue growth opportunities.
+- Efficiency improvements.
+- Performance improvement opportunities.
+- Areas showing strong performance.
+
+RISKS
+- Underperformance.
+- Data quality concerns impacting decisions.
+- Concentration risks.
+- Operational concerns.
+
+RECOMMENDATIONS
+- Actionable business recommendations.
+- Management-level suggestions.
+- Strategic next steps.
+
+NEXT ACTIONS
+- Immediate actions stakeholders should take.
+
+CONFIDENCE LEVEL
+- High = strong business evidence available.
+- Medium = moderate evidence available.
+- Low = limited evidence available.
+
+Business Context:
 {json.dumps(compact_summary, default=str)}
 """
 
@@ -181,6 +251,7 @@ def generate_llm_executive_analysis(summary: dict[str, Any]) -> dict[str, Any]:
             "risks": report.get("risks", []),
             "recommendations": report.get("recommendations", []),
             "next_actions": report.get("next_actions", []),
+            "confidence_level": report.get("confidence_level", "medium"),
             "model_used": GEMINI_MODEL,
             "provider": "gemini",
         }
@@ -199,6 +270,7 @@ def generate_llm_executive_analysis(summary: dict[str, Any]) -> dict[str, Any]:
                 "risks": report.get("risks", []),
                 "recommendations": report.get("recommendations", []),
                 "next_actions": report.get("next_actions", []),
+                "confidence_level": report.get("confidence_level", "medium"),
                 "model_used": model,
                 "provider": "openrouter",
             }

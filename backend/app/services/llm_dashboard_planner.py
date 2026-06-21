@@ -4,6 +4,7 @@ from typing import Any
 
 import requests
 from dotenv import load_dotenv
+from google import genai
 
 
 load_dotenv()
@@ -14,11 +15,16 @@ OPENROUTER_FALLBACK_MODEL = os.getenv("OPENROUTER_FALLBACK_MODEL", "deepseek/dee
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
 
 DEFAULT_DASHBOARD_PLAN = {
     "kpi_plan": [],
     "chart_plan": [],
-    "filter_plan": []
+    "filter_plan": [],
+    "model_used": None,
+    "provider": "fallback",
 }
 
 
@@ -116,6 +122,21 @@ Choose aggregation based on metric meaning:
 Dataset summary:
 {json.dumps(compact_summary, default=str)}
 """
+
+def call_gemini(prompt: str) -> dict[str, Any]:
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY is not configured.")
+
+    client = genai.Client(api_key=GEMINI_API_KEY)
+
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+    )
+
+    content = response.text or ""
+
+    return parse_llm_json(content)
 
 
 def call_openrouter(model: str, prompt: str) -> dict[str, Any]:
@@ -318,11 +339,22 @@ def validate_dashboard_plan(plan: dict[str, Any], column_profile: dict) -> dict[
 def generate_llm_dashboard_plan(summary: dict[str, Any], column_profile: dict) -> dict[str, Any]:
     prompt = build_dashboard_prompt(summary)
 
+    try:
+        plan = call_gemini(prompt)
+        validated_plan = validate_dashboard_plan(plan, column_profile)
+        validated_plan["model_used"] = GEMINI_MODEL
+        validated_plan["provider"] = "gemini"
+        return validated_plan
+
+    except Exception as e:
+        print(f"Gemini dashboard planner error: {e}")
+
     for model in [OPENROUTER_PRIMARY_MODEL, OPENROUTER_FALLBACK_MODEL]:
         try:
             plan = call_openrouter(model, prompt)
             validated_plan = validate_dashboard_plan(plan, column_profile)
             validated_plan["model_used"] = model
+            validated_plan["provider"] = "openrouter"
             return validated_plan
 
         except Exception as e:

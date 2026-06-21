@@ -7,6 +7,9 @@ from app.services.column_profiler import profile_columns
 from app.services.insight_generator import generate_basic_insights
 from app.services.llm_report_generator import generate_llm_executive_analysis
 from app.services.llm_dashboard_planner import generate_llm_dashboard_plan
+from app.services.business_metrics import generate_business_metrics
+from app.services.chart_summary import generate_chart_summary
+from app.services.data_quality_summary import generate_data_quality_summary
 
 MAX_FRONTEND_ROWS = 10000
 CHART_SAMPLE_ROWS = 10000
@@ -31,6 +34,11 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
 
     column_profile = profile_columns(df)
 
+    business_metrics = generate_business_metrics(
+        df,
+        column_profile,
+    )
+
     numeric_columns = column_profile.get("numeric_columns", [])
     text_columns = column_profile.get("categorical_columns", []) + column_profile.get("text_columns", [])
     possible_date_columns = column_profile.get("date_columns", [])
@@ -52,6 +60,14 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         )
 
     data_quality_score = max(data_quality_score, 0)
+
+    data_quality_summary = generate_data_quality_summary(
+        rows=rows,
+        columns=columns,
+        total_missing_values=total_missing,
+        duplicate_rows=duplicate_rows,
+        data_quality_score=data_quality_score,
+    )
 
     dashboard_plan_summary = {
         "rows": rows,
@@ -87,6 +103,11 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         chart_plan=dashboard_plan.get("chart_plan"),
     )
 
+    chart_summary = generate_chart_summary(
+        chart_recommendations=chart_recommendations,
+        dashboard_plan=dashboard_plan,
+    )
+
     insights = generate_basic_insights(
         rows=rows,
         columns=columns,
@@ -102,13 +123,16 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "rows": rows,
         "columns": columns,
         "data_quality_score": data_quality_score,
+        "data_quality_summary": data_quality_summary,
         "total_missing_values": total_missing,
         "duplicate_rows": duplicate_rows,
         "column_profile": column_profile,
+        "business_metrics": business_metrics,
         "kpis": kpis,
         "missing_values": missing_values,
         "insights": insights,
         "preview": preview,
+        "chart_summary": chart_summary,
     }
 
     executive_analysis = generate_llm_executive_analysis(summary_for_llm)
@@ -127,6 +151,7 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "possible_date_columns": possible_date_columns,
         "summary_statistics": summary_statistics,
         "data_quality_score": data_quality_score,
+        "data_quality_summary": data_quality_summary,
         "preview": preview,
         "data": df.fillna("").to_dict(orient="records") if not is_large_dataset else [],
         "processing": {
@@ -143,8 +168,10 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "insights": insights,
         "chart_recommendations": chart_recommendations,
         "charts": charts,
+        "chart_summary": chart_summary,
         "filters": filters,
         "column_profile": column_profile,
+        "business_metrics": business_metrics,
         "executive_analysis": executive_analysis,
         "dashboard_plan": dashboard_plan,
     }

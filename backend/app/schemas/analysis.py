@@ -8,6 +8,7 @@ class AnalysisResponse(BaseModel):
     filename: str
 
     overview: dict[str, Any]
+    data_quality_summary: dict[str, Any] | None = None
     column_profile: dict[str, Any] | None = None
     dashboard: dict[str, Any]
     report: dict[str, Any]
