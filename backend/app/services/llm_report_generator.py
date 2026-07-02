@@ -74,6 +74,7 @@ def build_report_prompt(summary: dict[str, Any]) -> str:
         },
         "column_profile": summary.get("column_profile"),
         "business_metrics": summary.get("business_metrics"),
+        "statistical_profile": summary.get("statistical_profile"),
         "chart_summary": summary.get("chart_summary"),
         "kpis": summary.get("kpis"),
         "missing_values": summary.get("missing_values"),
@@ -102,6 +103,10 @@ Focus on:
 - Growth opportunities
 - Resource allocation insights
 - Areas requiring management attention
+- Distribution patterns
+- Outliers
+- Variability
+- Strong relationships between metrics
 
 Do NOT focus on:
 - Number of rows
@@ -175,6 +180,31 @@ CONFIDENCE LEVEL
 
 Business Context:
 {json.dumps(compact_summary, default=str)}
+
+Use the statistical profile to identify:
+
+- unusually high or low variability
+- significant outliers
+- skewed distributions
+- meaningful correlations
+- possible operational anomalies
+
+Do not describe statistics for their own sake.
+Translate every statistical observation into a business implication.
+
+For example:
+
+Instead of:
+"The salary column has a standard deviation of 25,000."
+
+Say:
+"Salary variation is unusually high, suggesting considerable differences in role seniority or compensation structure."
+
+Instead of:
+"There are 14 outliers."
+
+Say:
+"A small number of unusually large transactions may warrant review to determine whether they represent strategic accounts or exceptional events."
 """
 
 

@@ -10,6 +10,7 @@ from app.services.llm_dashboard_planner import generate_llm_dashboard_plan
 from app.services.business_metrics import generate_business_metrics
 from app.services.chart_summary import generate_chart_summary
 from app.services.data_quality_summary import generate_data_quality_summary
+from app.services.statistical_profile import generate_statistical_profile
 
 MAX_FRONTEND_ROWS = 10000
 CHART_SAMPLE_ROWS = 10000
@@ -35,6 +36,11 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
     column_profile = profile_columns(df)
 
     business_metrics = generate_business_metrics(
+        df,
+        column_profile,
+    )
+
+    statistical_profile = generate_statistical_profile(
         df,
         column_profile,
     )
@@ -128,6 +134,7 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "duplicate_rows": duplicate_rows,
         "column_profile": column_profile,
         "business_metrics": business_metrics,
+        "statistical_profile": statistical_profile,
         "kpis": kpis,
         "missing_values": missing_values,
         "insights": insights,
@@ -172,6 +179,7 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "filters": filters,
         "column_profile": column_profile,
         "business_metrics": business_metrics,
+        "statistical_profile": statistical_profile,
         "executive_analysis": executive_analysis,
         "dashboard_plan": dashboard_plan,
     }
