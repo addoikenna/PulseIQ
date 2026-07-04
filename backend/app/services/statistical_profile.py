@@ -86,7 +86,7 @@ def generate_statistical_profile(
                 )[:10]
 
                 numeric_profiles = sorted(
-                    numeric_profiles,s
+                    numeric_profiles,
                     key=lambda x: (
                         x["outlier_percentage"],
                         x["standard_deviation"]
