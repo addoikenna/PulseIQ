@@ -119,6 +119,20 @@ Choose aggregation based on metric meaning:
 - Never sum or average identifier columns.
 - For counts of entities, count rows or non-null records, not ID values.
 
+Dashboard composition rules:
+- Prefer charts that answer business questions.
+- Do not overuse histograms.
+- Use at most one histogram.
+- Avoid charts that compare one dimension against another dimension without a numeric measure.
+- Do not create charts like region vs date, category vs date, name vs date, or ID vs date.
+- Every chart must have a clear business purpose.
+- Prefer:
+  - revenue/profit/sales by category
+  - metric trend over time
+  - count by category
+  - average performance by segment
+  - relationship between two numeric metrics
+
 Dataset summary:
 {json.dumps(compact_summary, default=str)}
 """
@@ -263,6 +277,8 @@ def validate_dashboard_plan(plan: dict[str, Any], column_profile: dict) -> dict[
 
         valid_kpis.append(kpi)
 
+    histogram_count = 0
+
     valid_charts = []
     for chart in plan.get("chart_plan", []):
         chart_type = chart.get("chart_type")
@@ -275,37 +291,56 @@ def validate_dashboard_plan(plan: dict[str, Any], column_profile: dict) -> dict[
         if x_axis and x_axis != "none" and x_axis not in all_columns:
             continue
 
-        if y_axis and y_axis != "count" and y_axis != "none" and y_axis not in all_columns:
+        if y_axis and y_axis not in ["count", "none"] and y_axis not in all_columns:
             continue
 
+        # Block identifier/contact columns
+        if x_axis in blocked_columns or y_axis in blocked_columns:
+            continue
+
+        # LINE: date + numeric only
         if chart_type == "line":
-            if x_axis not in date_columns or y_axis not in numeric_columns:
+            if x_axis not in date_columns:
+                continue
+            if y_axis not in numeric_columns:
                 continue
 
+        # BAR: category/date + numeric OR category count
         if chart_type == "bar":
             if x_axis not in categorical_columns and x_axis not in date_columns:
                 continue
 
+            if y_axis not in ["count", "none"] and y_axis not in numeric_columns:
+                continue
+
+        # PIE: category only, count/share only
         if chart_type == "pie":
             if x_axis not in categorical_columns:
                 continue
+            if y_axis not in ["count", "none", None]:
+                continue
 
+        # HISTOGRAM: numeric only, max one
         if chart_type == "histogram":
             if x_axis not in numeric_columns:
                 continue
 
-        if chart_type == "scatter":
-            if x_axis not in numeric_columns or y_axis not in numeric_columns:
+            histogram_count += 1
+            if histogram_count > 1:
                 continue
-        
+
+        # SCATTER: numeric + numeric only
+        if chart_type == "scatter":
+            if x_axis not in numeric_columns:
+                continue
+            if y_axis not in numeric_columns:
+                continue
+
         if y_axis and y_axis not in ["count", "none"]:
             chart["aggregation"] = infer_safe_aggregation(
                 y_axis,
                 chart.get("aggregation")
             )
-
-        if x_axis in blocked_columns or y_axis in blocked_columns:
-            continue
 
         if y_axis in performance_metric_columns:
             chart["aggregation"] = "average"
