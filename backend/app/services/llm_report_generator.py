@@ -127,55 +127,55 @@ def build_report_prompt(summary: dict[str, Any]) -> str:
 
     The JSON must contain exactly:
 
-    {
+    {{
         "business_situation": [
             "..."
         ],
         "key_business_drivers": [
-            {
+            {{
             "driver": "...",
             "why_it_matters": "...",
             "evidence": "..."
-            }
+            }}
         ],
         "critical_risks": [
-            {
+            {{
             "risk": "...",
             "severity": "High | Medium | Low",
             "business_impact": "...",
             "evidence": "..."
-            }
+            }}
         ],
         "growth_opportunities": [
-            {
+            {{
             "opportunity": "...",
             "expected_impact": "High | Medium | Low",
             "evidence": "..."
-            }
+            }}
         ],
         "strategic_priorities": [
-            {
+            {{
             "priority": "High | Medium | Low",
             "recommendation": "...",
             "expected_impact": "High | Medium | Low",
             "evidence": "...",
             "suggested_owner": "...",
             "timeline": "Immediate | 30 Days | 90 Days | Long-term"
-            }
+            }}
         ],
         "ninety_day_action_plan": [
-            {
+            {{
             "timeline": "Immediate | 30 Days | 60 Days | 90 Days",
             "action": "...",
             "owner": "...",
             "success_measure": "..."
-            }
+            }}
         ],
-        "confidence_assessment": {
+        "confidence_assessment": {{
             "level": "High | Medium | Low",
             "reason": "..."
-        }
-    }
+        }}
+    }}
 
     Rules:
     - Do not invent facts not supported by the business context.
