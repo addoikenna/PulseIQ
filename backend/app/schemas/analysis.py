@@ -9,6 +9,10 @@ class AnalysisResponse(BaseModel):
 
     overview: dict[str, Any]
     data_quality_summary: dict[str, Any] | None = None
+    business_health: dict[str, Any] | None = None
+    business_drivers: dict[str, Any] | None = None
+    business_risks: dict[str, Any] | None = None
+    business_opportunities: dict[str, Any] | None = None
     column_profile: dict[str, Any] | None = None
     dashboard: dict[str, Any]
     report: dict[str, Any]

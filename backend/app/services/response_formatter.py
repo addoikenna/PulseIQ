@@ -14,6 +14,14 @@ def format_analysis_response(summary: dict, filename: str) -> dict:
 
         "data_quality_summary": summary.get("data_quality_summary"),
 
+        "business_health": summary.get("business_health"),
+
+        "business_drivers": summary.get("business_drivers"),
+
+        "business_risks": summary.get("business_risks"),
+
+        "business_opportunities": summary.get("business_opportunities"),
+
         "column_profile": summary.get("column_profile"),
 
         "dashboard": {

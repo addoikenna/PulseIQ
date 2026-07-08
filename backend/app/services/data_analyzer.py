@@ -11,6 +11,10 @@ from app.services.business_metrics import generate_business_metrics
 from app.services.chart_summary import generate_chart_summary
 from app.services.data_quality_summary import generate_data_quality_summary
 from app.services.statistical_profile import generate_statistical_profile
+from app.services.business_health import generate_business_health
+from app.services.driver_detector import detect_business_drivers
+from app.services.risk_detector import detect_business_risks
+from app.services.opportunity_detector import detect_business_opportunities
 
 MAX_FRONTEND_ROWS = 10000
 CHART_SAMPLE_ROWS = 10000
@@ -75,6 +79,37 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         data_quality_score=data_quality_score,
     )
 
+    business_health = generate_business_health(
+        rows=rows,
+        columns=columns,
+        data_quality_summary=data_quality_summary,
+        statistical_profile=statistical_profile,
+        business_metrics=business_metrics,
+    )
+
+    business_drivers = detect_business_drivers(
+        rows=rows,
+        business_metrics=business_metrics,
+        statistical_profile=statistical_profile,
+    )
+
+    business_risks = detect_business_risks(
+        rows=rows,
+        data_quality_summary=data_quality_summary,
+        business_health=business_health,
+        business_drivers=business_drivers,
+        statistical_profile=statistical_profile,
+    )
+
+    business_opportunities = detect_business_opportunities(
+        rows=rows,
+        business_health=business_health,
+        business_drivers=business_drivers,
+        business_risks=business_risks,
+        business_metrics=business_metrics,
+        statistical_profile=statistical_profile,
+    )
+
     dashboard_plan_summary = {
         "rows": rows,
         "columns": columns,
@@ -135,6 +170,10 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "column_profile": column_profile,
         "business_metrics": business_metrics,
         "statistical_profile": statistical_profile,
+        "business_health": business_health,
+        "business_drivers": business_drivers,
+        "business_risks": business_risks,
+        "business_opportunities": business_opportunities,
         "kpis": kpis,
         "missing_values": missing_values,
         "insights": insights,
@@ -159,6 +198,10 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "summary_statistics": summary_statistics,
         "data_quality_score": data_quality_score,
         "data_quality_summary": data_quality_summary,
+        "business_health": business_health,
+        "business_drivers": business_drivers,
+        "business_risks": business_risks,
+        "business_opportunities": business_opportunities,
         "preview": preview,
         "data": df.fillna("").to_dict(orient="records") if not is_large_dataset else [],
         "processing": {

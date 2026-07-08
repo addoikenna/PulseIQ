@@ -80,6 +80,10 @@ def build_report_prompt(summary: dict[str, Any]) -> str:
         "missing_values": summary.get("missing_values"),
         "insights": summary.get("insights"),
         "data_quality_summary": summary.get("data_quality_summary"),
+        "business_health": summary.get("business_health"),
+        "business_drivers": summary.get("business_drivers"),
+        "business_risks": summary.get("business_risks"),
+        "business_opportunities": summary.get("business_opportunities"),
         "preview": summary.get("preview"),
     }
 
