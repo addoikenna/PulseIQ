@@ -27,15 +27,18 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
 DEFAULT_EXECUTIVE_ANALYSIS = {
-    "executive_summary": [
+    "business_situation": [
         "AI executive analysis is currently unavailable. Rule-based insights are shown instead."
     ],
-    "key_findings": [],
-    "opportunities": [],
-    "risks": [],
-    "recommendations": [],
-    "next_actions": [],
-    "confidence_level": "low",
+    "key_business_drivers": [],
+    "critical_risks": [],
+    "growth_opportunities": [],
+    "strategic_priorities": [],
+    "ninety_day_action_plan": [],
+    "confidence_assessment": {
+        "level": "low",
+        "reason": "AI executive analysis was unavailable."
+    },
     "provider": "fallback",
     "model_used": None,
 }
@@ -88,128 +91,166 @@ def build_report_prompt(summary: dict[str, Any]) -> str:
     }
 
     return f"""
-You are PulseIQ, a senior Business Intelligence Consultant and Executive Advisor.
+    You are PulseIQ, a senior Business Intelligence Consultant and Executive Advisor.
 
-Your audience is:
-- CEOs
-- Founders
-- Business Managers
-- Department Heads
-- Investors
+    Your audience is:
+    - CEOs
+    - Founders
+    - Business Managers
+    - Department Heads
+    - Investors
 
-Analyze the information provided and generate an executive-level business report.
+    Analyze the information provided and generate an executive-level business report.
 
-Focus on:
-- Business performance
-- Trends and patterns
-- Operational opportunities
-- Strategic risks
-- Growth opportunities
-- Resource allocation insights
-- Areas requiring management attention
-- Distribution patterns
-- Outliers
-- Variability
-- Strong relationships between metrics
+    Focus on:
+    - Business performance
+    - Trends and patterns
+    - Operational opportunities
+    - Strategic risks
+    - Growth opportunities
+    - Resource allocation insights
+    - Areas requiring management attention
+    - Distribution patterns
+    - Outliers
+    - Variability
+    - Strong relationships between metrics
 
-Do NOT focus on:
-- Number of rows
-- Number of columns
-- Technical dataset structure
-- Programming concepts
+    Do NOT focus on:
+    - Number of rows
+    - Number of columns
+    - Technical dataset structure
+    - Programming concepts
 
-Only mention data quality concerns if they materially affect decision-making.
+    Only mention data quality concerns if they materially affect decision-making.
 
-Return ONLY valid JSON.
+    Return ONLY valid JSON.
 
-The JSON must contain exactly:
+    The JSON must contain exactly:
 
-{{
-  "executive_summary": [
-    "..."
-  ],
-  "key_findings": [
-    "..."
-  ],
-  "opportunities": [
-    "..."
-  ],
-  "risks": [
-    "..."
-  ],
-  "recommendations": [
-    "..."
-  ],
-  "next_actions": [
-    "..."
-  ],
-  "confidence_level": "high | medium | low"
-}}
+    {
+        "business_situation": [
+            "..."
+        ],
+        "key_business_drivers": [
+            {
+            "driver": "...",
+            "why_it_matters": "...",
+            "evidence": "..."
+            }
+        ],
+        "critical_risks": [
+            {
+            "risk": "...",
+            "severity": "High | Medium | Low",
+            "business_impact": "...",
+            "evidence": "..."
+            }
+        ],
+        "growth_opportunities": [
+            {
+            "opportunity": "...",
+            "expected_impact": "High | Medium | Low",
+            "evidence": "..."
+            }
+        ],
+        "strategic_priorities": [
+            {
+            "priority": "High | Medium | Low",
+            "recommendation": "...",
+            "expected_impact": "High | Medium | Low",
+            "evidence": "...",
+            "suggested_owner": "...",
+            "timeline": "Immediate | 30 Days | 90 Days | Long-term"
+            }
+        ],
+        "ninety_day_action_plan": [
+            {
+            "timeline": "Immediate | 30 Days | 60 Days | 90 Days",
+            "action": "...",
+            "owner": "...",
+            "success_measure": "..."
+            }
+        ],
+        "confidence_assessment": {
+            "level": "High | Medium | Low",
+            "reason": "..."
+        }
+    }
 
-Guidelines:
+    Rules:
+    - Do not invent facts not supported by the business context.
+    - Do not recalculate metrics.
+    - Use the backend-generated business_health, business_drivers, business_risks, and business_opportunities as the main evidence base.
+    - Every strategic priority must include evidence.
+    - Every risk must include business impact.
+    - Every action must have an owner and success measure.
+    - Avoid technical dataset language unless it affects decision-making.
+    - Write like a senior consultant preparing an executive briefing.
 
-EXECUTIVE SUMMARY
-- 3 to 5 concise bullets.
-- Summarize overall business performance.
-- Highlight major observations.
+    Guidelines:
 
-KEY FINDINGS
-- Most important business observations.
-- Mention dominant categories, top metrics, trends, and patterns.
+    EXECUTIVE SUMMARY
+    - 3 to 5 concise bullets.
+    - Summarize overall business performance.
+    - Highlight major observations.
 
-OPPORTUNITIES
-- Revenue growth opportunities.
-- Efficiency improvements.
-- Performance improvement opportunities.
-- Areas showing strong performance.
+    KEY FINDINGS
+    - Most important business observations.
+    - Mention dominant categories, top metrics, trends, and patterns.
 
-RISKS
-- Underperformance.
-- Data quality concerns impacting decisions.
-- Concentration risks.
-- Operational concerns.
+    OPPORTUNITIES
+    - Revenue growth opportunities.
+    - Efficiency improvements.
+    - Performance improvement opportunities.
+    - Areas showing strong performance.
 
-RECOMMENDATIONS
-- Actionable business recommendations.
-- Management-level suggestions.
-- Strategic next steps.
+    RISKS
+    - Underperformance.
+    - Data quality concerns impacting decisions.
+    - Concentration risks.
+    - Operational concerns.
 
-NEXT ACTIONS
-- Immediate actions stakeholders should take.
+    RECOMMENDATIONS
+    - Actionable business recommendations.
+    - Management-level suggestions.
+    - Strategic next steps.
 
-CONFIDENCE LEVEL
-- High = strong business evidence available.
-- Medium = moderate evidence available.
-- Low = limited evidence available.
+    NEXT ACTIONS
+    - Immediate actions stakeholders should take.
 
-Business Context:
-{json.dumps(compact_summary, default=str)}
+    CONFIDENCE LEVEL
+    - High = strong business evidence available.
+    - Medium = moderate evidence available.
+    - Low = limited evidence available.
 
-Use the statistical profile to identify:
+    Business Context:
+    {json.dumps(compact_summary, default=str)}
 
-- unusually high or low variability
-- significant outliers
-- skewed distributions
-- meaningful correlations
-- possible operational anomalies
+    Use the statistical profile to identify:
 
-Do not describe statistics for their own sake.
-Translate every statistical observation into a business implication.
+    - unusually high or low variability
+    - significant outliers
+    - skewed distributions
+    - meaningful correlations
+    - possible operational anomalies
 
-For example:
+    Do not describe statistics for their own sake.
+    Translate every statistical observation into a business implication.
 
-Instead of:
-"The salary column has a standard deviation of 25,000."
+    For example:
 
-Say:
-"Salary variation is unusually high, suggesting considerable differences in role seniority or compensation structure."
+    Instead of:
+    "The salary column has a standard deviation of 25,000."
 
-Instead of:
-"There are 14 outliers."
+    Say:
+    "Salary variation is unusually high, suggesting considerable differences in role seniority or compensation structure."
 
-Say:
-"A small number of unusually large transactions may warrant review to determine whether they represent strategic accounts or exceptional events."
-"""
+    Instead of:
+    "There are 14 outliers."
+
+    Say:
+    "A small number of unusually large transactions may warrant review to determine whether they represent strategic accounts or exceptional events."
+    """
 
 
 def call_openrouter(model: str, prompt: str) -> dict[str, Any]:
@@ -279,13 +320,19 @@ def generate_llm_executive_analysis(summary: dict[str, Any]) -> dict[str, Any]:
         report = call_gemini(prompt)
 
         return {
-            "executive_summary": report.get("executive_summary", []),
-            "key_findings": report.get("key_findings", []),
-            "opportunities": report.get("opportunities", []),
-            "risks": report.get("risks", []),
-            "recommendations": report.get("recommendations", []),
-            "next_actions": report.get("next_actions", []),
-            "confidence_level": report.get("confidence_level", "medium"),
+            "business_situation": report.get("business_situation", []),
+            "key_business_drivers": report.get("key_business_drivers", []),
+            "critical_risks": report.get("critical_risks", []),
+            "growth_opportunities": report.get("growth_opportunities", []),
+            "strategic_priorities": report.get("strategic_priorities", []),
+            "ninety_day_action_plan": report.get("ninety_day_action_plan", []),
+            "confidence_assessment": report.get(
+                "confidence_assessment",
+                {
+                    "level": "medium",
+                    "reason": "Confidence was not explicitly provided by the model."
+                }
+            ),
             "model_used": GEMINI_MODEL,
             "provider": "gemini",
         }
@@ -298,13 +345,19 @@ def generate_llm_executive_analysis(summary: dict[str, Any]) -> dict[str, Any]:
             report = call_openrouter(model, prompt)
 
             return {
-                "executive_summary": report.get("executive_summary", []),
-                "key_findings": report.get("key_findings", []),
-                "opportunities": report.get("opportunities", []),
-                "risks": report.get("risks", []),
-                "recommendations": report.get("recommendations", []),
-                "next_actions": report.get("next_actions", []),
-                "confidence_level": report.get("confidence_level", "medium"),
+                "business_situation": report.get("business_situation", []),
+                "key_business_drivers": report.get("key_business_drivers", []),
+                "critical_risks": report.get("critical_risks", []),
+                "growth_opportunities": report.get("growth_opportunities", []),
+                "strategic_priorities": report.get("strategic_priorities", []),
+                "ninety_day_action_plan": report.get("ninety_day_action_plan", []),
+                "confidence_assessment": report.get(
+                    "confidence_assessment",
+                    {
+                        "level": "medium",
+                        "reason": "Confidence was not explicitly provided by the model."
+                    }
+                ),
                 "model_used": model,
                 "provider": "openrouter",
             }
