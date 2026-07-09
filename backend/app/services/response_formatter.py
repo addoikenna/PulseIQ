@@ -22,6 +22,8 @@ def format_analysis_response(summary: dict, filename: str) -> dict:
 
         "business_opportunities": summary.get("business_opportunities"),
 
+        "insight_cards": summary.get("insight_cards"),
+
         "column_profile": summary.get("column_profile"),
 
         "dashboard": {

@@ -15,6 +15,7 @@ from app.services.business_health import generate_business_health
 from app.services.driver_detector import detect_business_drivers
 from app.services.risk_detector import detect_business_risks
 from app.services.opportunity_detector import detect_business_opportunities
+from app.services.insight_cards import generate_insight_cards
 
 MAX_FRONTEND_ROWS = 10000
 CHART_SAMPLE_ROWS = 10000
@@ -110,6 +111,13 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         statistical_profile=statistical_profile,
     )
 
+    insight_cards = generate_insight_cards(
+        business_health=business_health,
+        business_drivers=business_drivers,
+        business_risks=business_risks,
+        business_opportunities=business_opportunities,
+    )
+
     dashboard_plan_summary = {
         "rows": rows,
         "columns": columns,
@@ -174,6 +182,7 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "business_drivers": business_drivers,
         "business_risks": business_risks,
         "business_opportunities": business_opportunities,
+        "insight_cards": insight_cards,
         "kpis": kpis,
         "missing_values": missing_values,
         "insights": insights,
@@ -202,6 +211,7 @@ def analyze_dataframe(df: pd.DataFrame) -> dict:
         "business_drivers": business_drivers,
         "business_risks": business_risks,
         "business_opportunities": business_opportunities,
+        "insight_cards": insight_cards,
         "preview": preview,
         "data": df.fillna("").to_dict(orient="records") if not is_large_dataset else [],
         "processing": {

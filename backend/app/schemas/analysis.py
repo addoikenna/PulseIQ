@@ -13,6 +13,7 @@ class AnalysisResponse(BaseModel):
     business_drivers: dict[str, Any] | None = None
     business_risks: dict[str, Any] | None = None
     business_opportunities: dict[str, Any] | None = None
+    insight_cards: list[dict[str, Any]] | None = None
     column_profile: dict[str, Any] | None = None
     dashboard: dict[str, Any]
     report: dict[str, Any]
