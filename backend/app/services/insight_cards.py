@@ -84,5 +84,28 @@ def generate_insight_cards(
 
         seen.add(headline)
         unique_cards.append(card)
+    
+    priority_order = {
+        "High": 3,
+        "Medium": 2,
+        "Low": 1
+    }
+
+    type_order = {
+        "risk": 5,
+        "driver": 4,
+        "opportunity": 3,
+        "health": 2,
+        "action": 1
+    }
+
+    unique_cards = sorted(
+        unique_cards,
+        key=lambda x: (
+            priority_order.get(x.get("priority", "Medium"), 2),
+            type_order.get(x.get("type"), 0),
+        ),
+        reverse=True,
+    )
 
     return unique_cards[:8]
