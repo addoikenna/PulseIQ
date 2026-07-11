@@ -32,6 +32,7 @@ class ChatAskResponse(BaseModel):
 
     session_id: str
     session_title: str
+    intent: str | None = None
 
     answer: str
 
@@ -46,8 +47,8 @@ class ChatAskResponse(BaseModel):
         "low",
     ]
 
-    evidence: list[ChatEvidence] = []
-    suggested_questions: list[str] = []
+    evidence: list[ChatEvidence] = Field(default_factory=list)
+    suggested_questions: list[str] = Field(default_factory=list)
 
     model_used: str | None = None
     provider: str | None = None
