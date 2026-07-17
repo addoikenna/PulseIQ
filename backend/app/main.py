@@ -10,6 +10,7 @@ from app.schemas.analysis import AnalysisResponse
 from app.routes.analyses import router as analyses_router
 from app.services.auth import get_current_user_id
 from app.routes.chat_route import router as chat_router
+from app.routes.explanation_route import router as explanation_router
 
 
 app = FastAPI(
@@ -46,8 +47,9 @@ app.add_middleware(
 
 # Routers
 app.include_router(analyses_router)
-app.include_router(analyses_router)
+#app.include_router(analyses_router)
 app.include_router(chat_router)
+app.include_router(explanation_router)
 
 # ============================================================
 # SYSTEM
