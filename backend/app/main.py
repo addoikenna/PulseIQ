@@ -47,7 +47,7 @@ app.add_middleware(
 
 # Routers
 app.include_router(analyses_router)
-#app.include_router(analyses_router)
+app.include_router(analyses_router)
 app.include_router(chat_router)
 app.include_router(explanation_router)
 
