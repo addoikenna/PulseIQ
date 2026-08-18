@@ -11,3 +11,4 @@ python-dotenv
 supabase
 PyJWT
 google-genai
+pyarrow
