@@ -2,6 +2,17 @@ from pydantic import BaseModel
 from typing import Any
 
 
+class DatasetStorageMetadata(BaseModel):
+    dataset_storage_path: str
+    dataset_format: str
+    dataset_size_bytes: int
+    dataset_row_count: int
+    dataset_column_count: int
+    dataset_stored_at: str
+    dataset_expires_at: str | None = None
+    prediction_ready: bool
+
+
 class AnalysisResponse(BaseModel):
     status: str
     message: str
@@ -21,3 +32,6 @@ class AnalysisResponse(BaseModel):
     preview: list[dict[str, Any]]
     data: list[dict[str, Any]] | None = None
     processing: dict[str, Any] | None = None
+
+    analysis_id: str | None = None
+    dataset_metadata: DatasetStorageMetadata | None = None

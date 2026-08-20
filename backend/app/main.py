@@ -1,5 +1,7 @@
+from uuid import uuid4
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends
 from pandas.errors import EmptyDataError, ParserError
 
 from app.services.data_analyzer import analyze_dataframe
@@ -12,6 +14,7 @@ from app.services.auth import get_current_user_id
 from app.routes.chat_route import router as chat_router
 from app.routes.explanation_route import router as explanation_router
 from app.routes.predictive_route import router as predictive_router
+from app.services.data_storage import store_cleaned_dataset
 
 
 app = FastAPI(
@@ -188,7 +191,10 @@ def sample_analysis():
     - AI-generated insights
     """,
 )
-async def analyze_dataset(file: UploadFile = File(...)):
+async def analyze_dataset(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id),
+):
     allowed_extensions = (".csv", ".xlsx", ".xls")
 
     if not file.filename:
@@ -213,9 +219,18 @@ async def analyze_dataset(file: UploadFile = File(...)):
             )
 
         cleaned_df, cleaning_report = clean_dataframe(df)
+        analysis_id = str(uuid4())
+
+        dataset_metadata = store_cleaned_dataset(
+            dataframe=cleaned_df,
+            user_id=user_id,
+            analysis_id=analysis_id,
+        )
 
         summary = analyze_dataframe(cleaned_df)
         summary["cleaning_report"] = cleaning_report
+        summary["analysis_id"] = analysis_id
+        summary["dataset_metadata"] = dataset_metadata
 
         return format_analysis_response(
             summary,

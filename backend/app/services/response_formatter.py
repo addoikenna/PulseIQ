@@ -4,6 +4,9 @@ def format_analysis_response(summary: dict, filename: str) -> dict:
         "message": "Dataset analyzed successfully.",
         "filename": filename,
 
+        "analysis_id": summary.get("analysis_id"),
+        "dataset_metadata": summary.get("dataset_metadata"),
+
         "overview": {
             "rows": summary.get("rows"),
             "columns": summary.get("columns"),
