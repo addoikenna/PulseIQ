@@ -12,3 +12,5 @@ supabase
 PyJWT
 google-genai
 pyarrow
+numpy
+scikit-learn
