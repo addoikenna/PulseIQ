@@ -119,15 +119,21 @@ class PredictiveFeatureSelection(BaseModel):
 
 
 class TrainPredictionRequest(BaseModel):
-    analysis_id: str
+    analysis_id: str = Field(
+        ...,
+        description="ID of the saved analysis whose dataset will be used.",
+    )
 
-    target_column: str
+    target_column: str = Field(
+        ...,
+        description="Column the user wants PulseIQ to predict.",
+    )
 
     problem_type: PredictionProblemType | None = Field(
         default=None,
         description=(
-            "Optional override. PulseIQ will infer the problem type "
-            "when this is omitted."
+            "Optional prediction problem type. "
+            "If omitted, PulseIQ will infer it from the target."
         ),
     )
 
@@ -141,21 +147,24 @@ class TrainPredictionRequest(BaseModel):
 
     random_state: int = 42
 
+    # V2.2: omit model_id for a new saved model; provide it to add a version.
+    model_id: str | None = None
+    model_name: str | None = Field(default=None, max_length=150)
+    save_model: bool = True
 
-class ModelMetric(BaseModel):
-    name: str
-    value: float
-    display_value: str | None = None
 
+# ---------------------------------------------------------------------------
+# V2.1 training response models
+# ---------------------------------------------------------------------------
 
 class ModelComparisonResult(BaseModel):
     model_name: str
-    metrics: list[ModelMetric]
-
-    training_rows: int
-    testing_rows: int
-
-    selected: bool = False
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    cv_mean_score: float | None = None
+    cv_std_score: float | None = None
+    cv_folds: int | None = None
+    selection_score: float | None = None
+    error: str | None = None
 
 
 class FeatureImportanceItem(BaseModel):
@@ -164,29 +173,105 @@ class FeatureImportanceItem(BaseModel):
     rank: int
 
 
+class ClassPerformanceItem(BaseModel):
+    class_label: str
+    support: int
+    precision: float
+    recall: float
+    f1: float
+
+
+class ClassificationMetrics(BaseModel):
+    accuracy: float
+    precision: float
+    recall: float
+    f1: float
+    macro_f1: float
+    weighted_f1: float
+    roc_auc: float | None = None
+    class_labels: list[str]
+    confusion_matrix: list[list[int]]
+    class_performance: list[ClassPerformanceItem]
+
+
+class RegressionMetrics(BaseModel):
+    mae: float
+    rmse: float
+    r2: float
+
+
+class RegressionBaselineItem(BaseModel):
+    prediction: float
+    metrics: RegressionMetrics
+
+
+class RegressionBaseline(BaseModel):
+    primary: Literal["training_mean"]
+    mean: RegressionBaselineItem
+    median: RegressionBaselineItem
+
+
+class ClassificationBaseline(BaseModel):
+    primary: Literal["majority_class"]
+    majority_class: str
+    metrics: ClassificationMetrics
+
+
+class BaselineComparison(BaseModel):
+    primary_metric: Literal["rmse", "f1"]
+    baseline_metric: float
+    model_metric: float
+    improvement_percentage: float | None = None
+    beats_primary_baseline: bool
+    accuracy_improvement_percentage_points: float | None = None
+    f1_improvement_percentage_points: float | None = None
+    macro_f1_improvement_percentage_points: float | None = None
+    beats_accuracy_baseline: bool | None = None
+    beats_f1_baseline: bool | None = None
+    mae_improvement_vs_median_percentage: float | None = None
+    rmse_absolute_improvement: float | None = None
+
+
+class ModelReliability(BaseModel):
+    level: Literal["weak", "moderate", "strong"]
+    reasons: list[str] = Field(default_factory=list)
+    note: str
+
+
 class PredictionTrainingResponse(BaseModel):
     status: Literal["success"] = "success"
-
-    prediction_id: str
     analysis_id: str
-
+    filename: str | None = None
+    problem_type: Literal["binary_classification", "multiclass_classification", "regression"]
     target_column: str
-    problem_type: PredictionProblemType
-
-    selected_model: str
-    selection_metric: str
-
-    models_compared: list[ModelComparisonResult]
-
-    feature_importance: list[FeatureImportanceItem] = Field(
-        default_factory=list
-    )
-
+    training_rows: int
+    test_rows: int
+    test_size: float
+    random_state: int
+    selected_features: list[str]
+    automatically_removed_features: list[str] = Field(default_factory=list)
+    models: list[ModelComparisonResult]
+    best_model: str
+    selection_metric: Literal["rmse", "f1"]
+    selection_method: str
+    best_model_metrics: ClassificationMetrics | RegressionMetrics
+    baseline: ClassificationBaseline | RegressionBaseline
+    baseline_comparison: BaselineComparison
+    model_reliability: ModelReliability
+    feature_importance: list[FeatureImportanceItem] = Field(default_factory=list)
+    feature_importance_note: str
     warnings: list[str] = Field(default_factory=list)
+    model_id: str | None = None
+    version_id: str | None = None
+    version_number: int | None = None
+    saved: bool = False
 
-    business_summary: str | None = None
-    model_confidence: Literal[
-        "high",
-        "medium",
-        "low",
-    ]
+
+# V2.2 read endpoints use flexible dictionaries because registry rows include JSONB.
+class SavedModelsResponse(BaseModel):
+    models: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class SavedModelVersionsResponse(BaseModel):
+    model_id: str
+    versions: list[dict[str, Any]] = Field(default_factory=list)
