@@ -275,3 +275,22 @@ class SavedModelsResponse(BaseModel):
 class SavedModelVersionsResponse(BaseModel):
     model_id: str
     versions: list[dict[str, Any]] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# V2.3 dataset column selector (real column names, no free-form guessing)
+# ---------------------------------------------------------------------------
+
+class PredictiveColumnOption(BaseModel):
+    name: str
+    data_type: Literal["numeric", "categorical", "datetime", "boolean", "other"]
+    eligible_as_feature: bool
+    eligible_as_target: bool
+    exclusion_reason: str | None = None
+
+
+class PredictiveColumnsResponse(BaseModel):
+    analysis_id: str
+    filename: str | None = None
+    target_column: str | None = None
+    columns: list[PredictiveColumnOption]

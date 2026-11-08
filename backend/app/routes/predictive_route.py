@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+import pandas as pd
+from pandas.api.types import (
+    is_bool_dtype, is_datetime64_any_dtype, is_numeric_dtype,
+)
 
 from app.schemas.predictive import (
     PredictiveReadinessRequest,
@@ -7,6 +11,7 @@ from app.schemas.predictive import (
     PredictionTrainingResponse,
     SavedModelsResponse,
     SavedModelVersionsResponse,
+    PredictiveColumnsResponse,
 )
 from app.services.auth import get_current_user_id
 from app.services.data_storage import (
@@ -100,6 +105,84 @@ def assess_saved_analysis_readiness(
         )
 
 
+@router.get(
+    "/analyses/{analysis_id}/columns",
+    response_model=PredictiveColumnsResponse,
+    summary="List selectable columns for predictive modelling",
+)
+def get_predictive_columns(
+    analysis_id: str,
+    target_column: str | None = Query(default=None),
+    user_id: str = Depends(get_current_user_id),
+):
+    """Return actual dataset column names after verifying analysis ownership.
+
+    The readiness service supplies the existing exclusion recommendations.
+    The frontend must never treat an eligibility hint as a bypass of training checks.
+    """
+    try:
+        record, df = get_analysis_dataset(analysis_id=analysis_id, user_id=user_id)
+        if target_column is not None and target_column not in df.columns:
+            raise HTTPException(status_code=400, detail="Selected target column does not exist.")
+
+        readiness = assess_predictive_readiness(
+            df=df, analysis_id=analysis_id, filename=record.get("filename")
+        )
+        # Readiness currently returns a dict; tolerate a Pydantic object too.
+        if hasattr(readiness, "model_dump"):
+            readiness = readiness.model_dump()
+        excluded = {
+            item["column"]: item["reason"]
+            for item in readiness.get("excluded_columns", [])
+        }
+        candidate_targets = {
+            item["column"]: item
+            for item in readiness.get("candidate_targets", [])
+        }
+        columns = []
+        for col in df.columns:
+            series = df[col]
+            if is_bool_dtype(series):
+                dtype = "boolean"
+            elif is_datetime64_any_dtype(series):
+                dtype = "datetime"
+            elif is_numeric_dtype(series):
+                dtype = "numeric"
+            elif pd.api.types.is_object_dtype(series) or isinstance(series.dtype, pd.CategoricalDtype) or pd.api.types.is_string_dtype(series):
+                dtype = "categorical"
+            else:
+                dtype = "other"
+
+            reason = excluded.get(col)
+            if col == target_column:
+                reason = "Selected prediction target; cannot also be a feature."
+            # Recommended exclusions remain visible, not silently omitted.
+            columns.append({
+                "name": col,
+                "data_type": dtype,
+                "eligible_as_feature": reason is None,
+                "eligible_as_target": col in candidate_targets and candidate_targets[col].get("problem_type") != "unsupported",
+                "exclusion_reason": reason,
+            })
+        return {
+            "analysis_id": analysis_id,
+            "filename": record.get("filename"),
+            "target_column": target_column,
+            "columns": columns,
+        }
+    except HTTPException:
+        raise
+    except DatasetNotAvailableError as error:
+        raise HTTPException(status_code=409, detail=str(error))
+    except DatasetStorageError:
+        raise HTTPException(status_code=503, detail="Could not retrieve the stored dataset.")
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error))
+    except Exception as error:
+        print(f"Predictive column metadata error: {error}")
+        raise HTTPException(status_code=500, detail="Could not retrieve dataset columns.")
+
+
 @router.post(
     "/train",
     response_model=PredictionTrainingResponse,
@@ -119,6 +202,17 @@ def train_saved_analysis_model(
             analysis_id=request.analysis_id,
             user_id=user_id,
         )
+
+        # Validate model identity BEFORE costly training. The atomic database
+        # save function independently enforces this rule again at write time.
+        if request.model_id is not None:
+            existing = get_model(user_id=user_id, model_id=request.model_id)
+            if existing["analysis_id"] != request.analysis_id:
+                raise HTTPException(status_code=409, detail="Existing model belongs to a different dataset. Create a new model instead.")
+            if existing["target_column"] != request.target_column:
+                raise HTTPException(status_code=409, detail="Changing the prediction target requires creating a new model.")
+            if request.problem_type is not None and existing["problem_type"] != request.problem_type:
+                raise HTTPException(status_code=409, detail="Changing the prediction task requires creating a new model.")
 
         selected_features = None
         excluded_features = None
@@ -163,6 +257,9 @@ def train_saved_analysis_model(
             **saved_info,
             "saved": bool(saved_info),
         }
+
+    except HTTPException:
+        raise
 
     except DatasetNotAvailableError as error:
         raise HTTPException(
