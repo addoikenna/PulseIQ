@@ -1,37 +1,70 @@
+
+import logging
 from uuid import uuid4
+
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import Depends
 from pandas.errors import EmptyDataError, ParserError
+
+# ============================================================
+# SERVICES
+# ============================================================
 
 from app.services.data_analyzer import analyze_dataframe
 from app.services.data_cleaner import clean_dataframe
 from app.services.response_formatter import format_analysis_response
 from app.services.file_handler import read_uploaded_file
-from app.schemas.analysis import AnalysisResponse
-from app.routes.analyses import router as analyses_router
 from app.services.auth import get_current_user_id
+from app.services.data_storage import store_cleaned_dataset
+
+# ============================================================
+# SCHEMAS
+# ============================================================
+
+from app.schemas.analysis import AnalysisResponse
+
+# ============================================================
+# ROUTERS
+# ============================================================
+
+from app.routes.analyses import router as analyses_router
 from app.routes.chat_route import router as chat_router
 from app.routes.explanation_route import router as explanation_router
 from app.routes.predictive_route import router as predictive_router
-from app.services.data_storage import store_cleaned_dataset
+from app.routes.cleaning_route import cleaning_router
 
+
+# ============================================================
+# LOGGING
+# ============================================================
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# FASTAPI APPLICATION
+# ============================================================
 
 app = FastAPI(
     title="PulseIQ API",
     description="""
-    PulseIQ is an AI-powered analytics platform that transforms CSV and Excel files
-    into dashboards, KPIs, visualizations, and executive business reports.
+    PulseIQ is an AI-powered analytics platform that transforms
+    CSV and Excel datasets into dashboards, KPIs, visualizations,
+    executive reports, and predictive insights.
 
     Features:
-    - Dataset profiling
+    - Dataset profiling and data quality assessment
+    - Automated data cleaning
+    - Interactive Data Cleaning Studio
     - KPI generation
     - Smart dashboard recommendations
     - Interactive chart generation
     - Executive AI reporting
+    - Predictive analytics and model training
+    - Model registry and version management
     - Saved analysis management
     """,
-    version="0.2.0",
+    version="0.3.0",
     contact={
         "name": "PulseIQ Support",
         "email": "support@pulseiq.ai",
@@ -41,19 +74,34 @@ app = FastAPI(
     },
 )
 
+
+# ============================================================
+# CORS CONFIGURATION
+# ============================================================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://pulseiq-analytics.lovable.app",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routers
+
+# ============================================================
+# REGISTER ROUTERS
+# ============================================================
+
 app.include_router(analyses_router)
 app.include_router(chat_router)
 app.include_router(explanation_router)
 app.include_router(predictive_router)
+app.include_router(cleaning_router)
+
 
 # ============================================================
 # SYSTEM
@@ -63,12 +111,12 @@ app.include_router(predictive_router)
     "/",
     tags=["System"],
     summary="API Root",
-    description="Returns a welcome message and confirms that the PulseIQ API is running.",
+    description="Returns a welcome message and confirms that PulseIQ is running.",
 )
 def root():
     return {
         "message": "Welcome to PulseIQ API",
-        "version": "0.2.0",
+        "version": app.version,
     }
 
 
@@ -83,11 +131,13 @@ def root():
     description="Checks whether the API is healthy and available.",
 )
 def health_check():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+    }
 
 
 # ============================================================
-# ANALYSIS
+# SAMPLE ANALYSIS
 # ============================================================
 
 @app.get(
@@ -95,7 +145,10 @@ def health_check():
     response_model=AnalysisResponse,
     tags=["Analysis"],
     summary="Sample Analysis Response",
-    description="Returns a sample PulseIQ analysis response for frontend development and testing.",
+    description=(
+        "Returns a sample analysis response for frontend "
+        "development and testing."
+    ),
 )
 def sample_analysis():
     return {
@@ -126,7 +179,10 @@ def sample_analysis():
                     "title": "Count by Category",
                     "x_axis": "category",
                     "y_axis": "count",
-                    "description": "Compares the number of records across categories.",
+                    "description": (
+                        "Compares the number of records "
+                        "across categories."
+                    ),
                 },
             ],
         },
@@ -153,7 +209,8 @@ def sample_analysis():
                     "date_columns_detected": ["date"],
                     "duplicates_detected": 0,
                     "warnings": [
-                        "Column 'quantity' has 1 missing value(s) and may need review."
+                        "Column 'quantity' has 1 missing value(s) "
+                        "and may need review."
                     ],
                 },
             },
@@ -175,6 +232,10 @@ def sample_analysis():
     }
 
 
+# ============================================================
+# DATASET ANALYSIS
+# ============================================================
+
 @app.post(
     "/analyze",
     response_model=AnalysisResponse,
@@ -189,6 +250,9 @@ def sample_analysis():
     - Data quality assessment
     - Executive business report
     - AI-generated insights
+
+    The cleaned dataset is also stored for later analysis
+    and predictive modelling.
     """,
 )
 async def analyze_dataset(
@@ -197,19 +261,30 @@ async def analyze_dataset(
 ):
     allowed_extensions = (".csv", ".xlsx", ".xls")
 
+    # --------------------------------------------------------
+    # VALIDATE UPLOADED FILE
+    # --------------------------------------------------------
+
     if not file.filename:
         raise HTTPException(
             status_code=400,
-            detail="No file uploaded."
+            detail="No file uploaded.",
         )
 
     if not file.filename.lower().endswith(allowed_extensions):
         raise HTTPException(
             status_code=400,
-            detail="Unsupported file type. Please upload a CSV, XLSX, or XLS file.",
+            detail=(
+                "Unsupported file type. "
+                "Please upload a CSV, XLSX, or XLS file."
+            ),
         )
 
     try:
+        # ----------------------------------------------------
+        # READ DATASET
+        # ----------------------------------------------------
+
         df = read_uploaded_file(file)
 
         if df.empty:
@@ -218,8 +293,21 @@ async def analyze_dataset(
                 detail="The uploaded file contains no data.",
             )
 
+        # ----------------------------------------------------
+        # INITIAL DATA CLEANING
+        # ----------------------------------------------------
+
         cleaned_df, cleaning_report = clean_dataframe(df)
+
+        # ----------------------------------------------------
+        # CREATE ANALYSIS ID
+        # ----------------------------------------------------
+
         analysis_id = str(uuid4())
+
+        # ----------------------------------------------------
+        # STORE CLEANED DATASET IN SUPABASE
+        # ----------------------------------------------------
 
         dataset_metadata = store_cleaned_dataset(
             dataframe=cleaned_df,
@@ -227,10 +315,19 @@ async def analyze_dataset(
             analysis_id=analysis_id,
         )
 
+        # ----------------------------------------------------
+        # GENERATE ANALYSIS
+        # ----------------------------------------------------
+
         summary = analyze_dataframe(cleaned_df)
+
         summary["cleaning_report"] = cleaning_report
         summary["analysis_id"] = analysis_id
         summary["dataset_metadata"] = dataset_metadata
+
+        # ----------------------------------------------------
+        # FORMAT RESPONSE
+        # ----------------------------------------------------
 
         return format_analysis_response(
             summary,
@@ -246,30 +343,42 @@ async def analyze_dataset(
     except ParserError:
         raise HTTPException(
             status_code=400,
-            detail="The uploaded file could not be parsed. Please check the file format.",
+            detail=(
+                "The uploaded file could not be parsed. "
+                "Please check the file format."
+            ),
         )
 
     except HTTPException:
         raise
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unexpected error while analyzing dataset: {str(e)}",
+    except Exception:
+        logger.exception(
+            "Unexpected error while analyzing uploaded dataset"
         )
 
-#----------------------------------
-# Local Test
-#----------------------------------
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "An unexpected error occurred while "
+                "analyzing the dataset."
+            ),
+        )
+
+
+# ============================================================
+# CURRENT AUTHENTICATED USER
+# ============================================================
 
 @app.get(
     "/me",
     tags=["System"],
-    summary="Current User"
+    summary="Current User",
+    description="Returns the ID of the authenticated user.",
 )
 def me(
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(get_current_user_id),
 ):
     return {
-        "user_id": user_id
+        "user_id": user_id,
     }
