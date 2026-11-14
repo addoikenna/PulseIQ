@@ -1,4 +1,20 @@
+import re
+
 import pandas as pd
+
+
+# Only parse columns with date-like names; sampling avoids full-column parsing.
+_DATE_NAME_PATTERN = re.compile(
+    r"(?:^|_)(?:date|datetime|timestamp|dob|birthday)(?:$|_)|"
+    r"(?:^|_)(?:created|updated|modified|enrolled|registered)_at$"
+)
+_DATE_VALUE_PATTERN = re.compile(
+    r"^(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|"
+    r"\d{1,2}[-/]\d{1,2}[-/]\d{4}|"
+    r"\d{1,2}[-/ ]+[A-Za-z]{3,9}[-/ ,]+\d{4}|"
+    r"[A-Za-z]{3,9}[-/ ]+\d{1,2},?[-/ ]+\d{4})"
+    r"(?:[ T].*)?$"
+)
 
 
 def profile_columns(df: pd.DataFrame) -> dict:
@@ -38,7 +54,7 @@ def profile_columns(df: pd.DataFrame) -> dict:
             profile["date_columns"].append(col)
             continue
 
-        if looks_like_date(series):
+        if _DATE_NAME_PATTERN.search(col_lower) and looks_like_date(series):
             profile["date_columns"].append(col)
             continue
 
@@ -112,11 +128,38 @@ def is_contact_column(col_lower: str) -> bool:
 
 
 def looks_like_date(series: pd.Series) -> bool:
-    if pd.api.types.is_numeric_dtype(series):
+    """Check a small sample for recognizable dates, without altering the column.
+
+    We deliberately avoid converting every text column and never interpret bare
+    numbers (such as student IDs or GPAs) as epoch-based timestamps.
+    """
+    if pd.api.types.is_numeric_dtype(series) or pd.api.types.is_bool_dtype(series):
         return False
 
-    converted = pd.to_datetime(series, errors="coerce")
-    return converted.notna().sum() / max(len(series), 1) >= 0.7
+    sample = series.dropna().astype(str).str.strip()
+    sample = sample[~sample.str.lower().isin({"", "-", "unknown", "null", "none", "n/a", "na"})]
+    if sample.empty:
+        return False
+
+    sample = sample.iloc[:64]
+    candidates = sample.map(lambda value: bool(_DATE_VALUE_PATTERN.fullmatch(value)))
+    if candidates.mean() < 0.7:
+        return False
+
+    # Pandas >=2 supports mixed formats directly, including YYYY-MM-DD and
+    # 17-May-2014 in the same column, without the dateutil inference warning.
+    try:
+        parsed = pd.to_datetime(sample[candidates], format="mixed", errors="coerce")
+    except ValueError:
+        # Compatibility fallback for pandas versions predating format="mixed".
+        # Parse common explicit formats rather than triggering format inference.
+        parsed = pd.Series(pd.NaT, index=sample[candidates].index, dtype="datetime64[ns]")
+        for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d-%m-%Y", "%d/%m/%Y",
+                    "%m/%d/%Y", "%d-%b-%Y", "%d-%B-%Y"):
+            current = pd.to_datetime(sample[candidates], format=fmt, errors="coerce")
+            parsed = parsed.fillna(current)
+
+    return int(parsed.notna().sum()) / len(sample) >= 0.7
 
 
 def is_financial_metric(col_lower: str) -> bool:
