@@ -32,6 +32,7 @@ from app.routes.chat_route import router as chat_router
 from app.routes.explanation_route import router as explanation_router
 from app.routes.predictive_route import router as predictive_router
 from app.routes.cleaning_route import cleaning_router
+from app.routes.preparation_route import preparation_router
 
 
 # ============================================================
@@ -101,6 +102,7 @@ app.include_router(chat_router)
 app.include_router(explanation_router)
 app.include_router(predictive_router)
 app.include_router(cleaning_router)
+app.include_router(preparation_router)
 
 
 # ============================================================

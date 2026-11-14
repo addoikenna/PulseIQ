@@ -14,7 +14,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.services.auth import get_current_user_id
-from app.services.data_storage import get_analysis_dataset, dataframe_to_parquet_bytes, DATASET_BUCKET
+from app.services.data_storage import (download_stored_dataset, build_dataset_storage_path,
+                                       dataframe_to_parquet_bytes, DATASET_BUCKET)
 from app.services.supabase_client import get_supabase_client
 from app.services.cleaning_engine import CleaningRule, apply_rules, profile
 
@@ -51,19 +52,27 @@ class CleaningRequest(BaseModel):
 
 
 def load_base(analysis_id: str, user_id: str, version_id: str | None):
-    # Always validate original analysis ownership first; service role bypasses RLS.
-    analysis, base_df = get_analysis_dataset(analysis_id, user_id)
+    # The upload is allowed to be 'prepared' (prediction_ready=False).
+    # Authenticate ownership explicitly: the service-role connection bypasses RLS.
+    db = get_supabase_client()
+    own = (db.table("analyses")
+           .select("id,user_id,filename,dataset_storage_path")
+           .eq("id", analysis_id).eq("user_id", user_id).limit(1).execute())
+    if not own.data:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    analysis = own.data[0]
+    # A fixed starting path ensures choosing a cleaned version for a dashboard
+    # never alters the original cleaning baseline of the analysis.
+    path = build_dataset_storage_path(user_id, analysis_id)
     if version_id:
-        db = get_supabase_client()
         response = (db.table("cleaning_versions")
                     .select("id, storage_path")
                     .eq("id", version_id).eq("analysis_id", analysis_id)
                     .eq("user_id", user_id).limit(1).execute())
         if not response.data:
             raise HTTPException(status_code=404, detail="Dataset version not found")
-        from app.services.data_storage import download_stored_dataset
-        base_df = download_stored_dataset(response.data[0]["storage_path"])
-    return analysis, base_df
+        path = response.data[0]["storage_path"]
+    return analysis, download_stored_dataset(path)
 
 
 def checked_load(analysis_id, user_id, version_id):
