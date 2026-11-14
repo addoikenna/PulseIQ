@@ -47,6 +47,7 @@ class CleaningRequest(BaseModel):
     analysis_id: str
     rules: list[CleaningRule] = Field(default_factory=list, max_length=50)
     base_version_id: str | None = None
+    version_name: str | None = Field(default=None, max_length=100)
 
 
 def load_base(analysis_id: str, user_id: str, version_id: str | None):
@@ -97,6 +98,9 @@ def save_cleaned_version(request: CleaningRequest, user_id: str = Depends(get_cu
     if not request.rules:
         raise HTTPException(status_code=422, detail="Choose at least one cleaning rule")
     _, df = checked_load(request.analysis_id, user_id, request.base_version_id)
+    display_name = request.version_name.strip() if request.version_name else None
+    if request.version_name is not None and not display_name:
+        raise HTTPException(status_code=422, detail="Version name cannot be blank")
     try:
         changed, events = apply_rules(df, request.rules)
     except ValueError as error:
@@ -110,6 +114,7 @@ def save_cleaned_version(request: CleaningRequest, user_id: str = Depends(get_cu
             file_options={"content-type": "application/octet-stream", "upsert": "false"})
         row = {
             "id": version_id, "analysis_id": request.analysis_id, "user_id": user_id,
+            "display_name": display_name,
             "parent_version_id": request.base_version_id, "storage_path": path,
             "rules": [r.model_dump(mode="json") for r in request.rules],
             "events": events, "row_count": len(changed),
@@ -124,7 +129,7 @@ def save_cleaned_version(request: CleaningRequest, user_id: str = Depends(get_cu
             pass
         raise HTTPException(status_code=503, detail="Unable to save dataset version")
     return {"analysis_id": request.analysis_id, "version_id": version_id,
-            "parent_version_id": request.base_version_id, "saved": True,
+            "parent_version_id": request.base_version_id, "display_name": display_name, "saved": True,
             "rows": len(changed), "events": events,
             "note": "Saved as a separate dataset version. Dashboard and training sources are unchanged."}
 
@@ -134,7 +139,7 @@ def list_cleaning_versions(analysis_id: str, user_id: str = Depends(get_current_
     checked_load(analysis_id, user_id, None)
     db = get_supabase_client()
     res = (db.table("cleaning_versions")
-           .select("id, parent_version_id, row_count, rules, events, created_at")
+           .select("id, display_name, parent_version_id, row_count, rules, events, created_at")
            .eq("analysis_id", analysis_id).eq("user_id", user_id)
            .order("created_at", desc=True).execute())
     return {"analysis_id": analysis_id, "versions": res.data}
